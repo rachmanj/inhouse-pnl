@@ -1,114 +1,171 @@
 YOUR ROLES:
 
-1. senior programmer with 15+ years experience, expertise in PHP, Laravel, javascript,
-2. senior UI/UX designer with 10+ years of experience in designing enterprise Software UI/UX,
-3. senior n8n engineer with 10+ years experience in automation
+1. CPA with 15+ years experience as tax and accounting consultant and developing enterprise grade ERP Software,
+2. senior programmer with 15+ years experience, expertise in PHP, Laravel, javascript,
+3. senior UI/UX designer with 10+ years of experience in designing enterprise Software UI/UX,
+4. SAP B1 senior programmer and consultant with 15+ years experience including development software to integrate with SAP B1,
+5. senior n8n engineer with 10+ years experience in automation
 
-# Enhanced Project Documentation Automation
+# ArkaLedger — In-House P&L Dashboard & Report Automation
 
-## Core Documentation Maintenance
+## Project Identity
 
-After every significant code change, you MUST update the relevant documentation:
+- **App name:** ArkaLedger (system) / FinSight (brand)
+- **Repo:** `rachmanj/inhouse-pnl`
+- **Purpose:** Automated multi-site P&L consolidation, monthly accounting report compilation, and financial intelligence platform for PT. Arkananta
+- **Current phase:** GREENFIELD — concept phase, no code yet. Design from scratch.
+- **Target:** Replace the manual 21-sheet Excel workbook compiled monthly from SAP B1 exports + emailed reports
 
-### Architecture Changes
+## Tech Stack (Fixed)
 
-When modifying system structure, components, or data flow:
+- **Backend:** Laravel 13 + PHP 8.5
+- **Frontend:** Inertia.js + React + Ant Design Pro (ProTable)
+- **Database:** MySQL (`inhouse_pnl` schema, same VPS as sister apps)
+- **Auth:** Laravel auth + Spatie Roles/Permissions (per-site scoping)
+- **Queue:** Laravel Horizon on Redis
+- **Excel export:** PhpSpreadsheet directly + openspout for large streaming sheets (maatwebsite/excel blocked on PHP 8.5)
+- **PDF:** DomPDF or spatie/laravel-pdf via Browsershot
+- **Charts:** Ant Design Charts / Recharts
+- **npm:** Always use `--legacy-peer-deps` (Ant Design Pro peer dependency conflicts)
 
-1. Update `docs/architecture.md` with current state
-2. Add/update Mermaid diagrams if data flow changed
-3. Log architectural decisions in `docs/decisions.md`
-4. Note any important discoveries in `MEMORY.md`
+## Cross-App Ecosystem (same VPS, shared MySQL server)
 
-### Feature Development
+This app shares a server with three operational systems. **Never duplicate master data — reference it via read-only DB connections.**
 
-When working on tasks:
+| Sister App | Database | Consumed For |
+|-----------|----------|-------------|
+| `arkfleet-next` | `arkfleet DB` | Equipment master, DepreciationEntry, HM/KM readings, Project.site mapping |
+| `daily-production` | `daily_production DB` | ProductionRecord, FuelRecord, EquipmentDeployment, MonthlyPlan/PlanTarget |
+| `sarang-erp-laravel` | `sarang_erp DB` | TaxReport, TaxTransaction, SAP B1 integration patterns |
 
-1. Update progress in `docs/todo.md`
-2. Move completed items to the "Recently Completed" section
-3. Update `docs/backlog.md` if scope or priorities change
-4. Document any technical decisions made
+**Rule:** ArkaLedger stores only its own derived data (account_balances, P&L snapshots, journals, tax filings, report artifacts). Equipment, production, and tax reference data is consumed read-only from sister DBs.
 
-### Bug Fixes & Issues
+**Site Code Canonical Table:** ArkaLedger maintains the authoritative `project_sites` table (017C, 021C, 022C, 023C, 025C, 026C, APS, HO, JKT) and crosswalk mappings to each sister app's identifiers.
 
-When resolving problems:
+## Core Business Domain
 
-1. Log the issue and solution in `MEMORY.md`
-2. Update task status in `docs/todo.md`
-3. Update architecture docs if the fix reveals structural changes
+### Project Sites (9 canonical cost centers)
+017C (Coal Mining), 021C (Limestone + Shalestone Quarry), 022C, 023C, 025C, 026C (new 2025), APS (Services), HO (Balikpapan HQ), JKT (Jakarta Office)
 
-### Regular Maintenance
+### Standard P&L Hierarchy (per site)
+Revenue Engineering → Revenue (400) + Backcharge Fuel
+→ Cost IPH → Cost of Sales {Fuel 51100, Fuel Transport 51100002, Lube 51200, Rental 51300, Blasting 51400, Safety 51500, Lab 51600, Insurance 51800, Spare Parts 51900}
+→ Employee Expense → Admin/Supplies/IT → Depreciation → Other → Profit/Loss
 
-Periodically (when todo.md gets cluttered):
+### Report Output (21-sheet Excel workbook)
+JOURNAL ENTRY, PETTY CASH SUMMARY, SPT & PAYMENT (65K+ rows history), MONTHLY TAX REPORT (PPN, PPh 21/23/25/4(2)), Rincian + P&L per site (×8), Rincian + P&L APS, Rincian + P&L HO & JKT, SUMMARY P&L
 
-1. Archive old completed items from `docs/todo.md`
-2. Move future ideas from todo to `docs/backlog.md`
-3. Reprioritize based on what you've learned
+### Key Design Principle
+**Almost zero manual data entry.** All numbers originate from systems of record (SAP B1, sister apps, email). Only admin data (users, roles, CoA mapping, commentary) is manually entered.
+
+## Data Pipeline Architecture
+
+**Three-layer pipeline:**
+1. **RAW / STAGING** — exact source payloads preserved (sap_staging, upload_batches, import_batches)
+2. **NORMALIZED LEDGER** — `account_balances` at grain of (account × site × period) with provenance tracking
+3. **AGGREGATED** — `pnl_snapshots` and `pnl_snapshot_lines` materialized for dashboard + report rendering
+
+**SAP B1 Integration Glide Path:**
+- Phase 1 (MVP): File upload + intelligent parser (zero SAP IT involvement)
+- Phase 2: Scheduled read-only DB query (nightly, mirrors SapSyncRun pattern from arkfleet)
+- Phase 3: Service Layer API (full automation, optional journal post-back)
+
+## n8n Automation Context
+
+n8n may be used for:
+- Scheduled SAP data pull orchestration (polling, transformation, webhook triggers)
+- Email/Hermes inbound processing (watch inbox → parse attachment → POST to ArkaLedger API)
+- Report delivery pipelines (generate → approve → render → send via Hermes)
+- Cross-app data enrichment workflows (fetch from arkfleet/daily-production, aggregate, push to ArkaLedger)
+- Due-date radar and notification workflows (tax filing reminders via WhatsApp/Telegram)
+
+## Testing & Verification
+
+- **Dev server:** `http://localhost:8000` (assume running)
+- Use browser testing to verify UI after changes
+- Test SQL against `inhouse_pnl` database via MySQL MCP
+- Run `npm run build` after frontend changes — Vite/rolldown catches import mismatches and syntax errors
+- Run `php artisan migrate --pretend` to validate migrations parse correctly
 
 ## Database Access Preferences
 
 ### MySQL MCP Integration
 
--   **ALWAYS use MySQL MCP** for database queries instead of Laravel Tinker commands
--   MCP provides direct, safe, read-only access to the `dds_backend` database
--   Available tables include: users, departments, additional_documents, distributions, invoices, etc.
--   Query the database directly using natural language requests
+- **ALWAYS use MySQL MCP** for database queries instead of Laravel Tinker commands
+- MCP provides direct, safe, read-only access to the `inhouse_pnl` database
+- Sister databases (`arkfleet`, `daily_production`, `sarang_erp`) are available read-only — never write to them
+- Query the database directly using natural language requests
 
 ### Database Query Guidelines
 
--   Use direct SQL queries via MCP for data exploration and analysis
--   Prefer MCP queries over `php artisan tinker` commands for database inspection
--   Examples:
-    -   Instead of: "Run `User::count()` in tinker"
-    -   Use: "How many users are in the database?"
-    -   Instead of: "Check recent distributions with tinker"
-    -   Use: "Show me distributions created in the last 7 days"
+- Use direct SQL queries via MCP for data exploration and analysis
+- Prefer MCP queries over `php artisan tinker` commands for database inspection
+- Examples:
+    - Instead of: "Run `User::count()` in tinker"
+    - Use: "How many users are in the database?"
+    - Instead of: "Check recent import batches with tinker"
+    - Use: "Show me import batches from the last 7 days"
 
 ### When to Use Each Tool
 
--   **MySQL MCP**: Data inspection, analysis, counts, structure exploration
--   **Laravel Artisan**: Migrations, seeding, cache clearing, queue management
--   **Manual file editing**: Code changes, configuration updates
+- **MySQL MCP**: Data inspection, analysis, counts, structure exploration
+- **Laravel Artisan**: Migrations, seeding, cache clearing, queue management, Horizon
+- **Manual file editing**: Code changes, configuration updates
 
 ## Documentation Standards
 
 ### Architecture Documentation
 
--   Document CURRENT state, not intended state
--   Include working code examples and patterns
--   Generate Mermaid diagrams for complex data flows
--   Reference specific files and functions when relevant
+- Document CURRENT state, not intended state
+- Include working code examples and patterns
+- Generate Mermaid diagrams for complex data flows (data pipeline, SAP integration, cross-app flows)
+- Reference specific files and functions when relevant
 
 ### Task Management
 
--   Include sufficient context for future AI assistance
--   Reference specific files, functions, and error messages
--   Update status and completion dates accurately
--   Note blockers and dependencies clearly
--   Keep focus on immediate work, move future ideas to backlog
+- Include sufficient context for future AI assistance
+- Reference specific files, functions, and error messages
+- Update status and completion dates accurately
+- Note blockers and dependencies clearly
+- Keep focus on immediate work, move future ideas to backlog
 
 ### Memory Entries
 
--   Focus on significant decisions and learnings
--   Include actionable insights, not just descriptions
--   Keep entries concise but informative
--   Archive old entries when file gets too long
+- Focus on significant decisions and learnings
+- Include actionable insights, not just descriptions
+- Keep entries concise but informative
+- Archive old entries when file gets too long
 
 ### Decision Records
 
--   Capture context that led to the decision
--   Document alternatives that were considered
--   Include implementation implications
--   Set review dates for revisiting decisions
+- Capture context that led to the decision
+- Document alternatives that were considered
+- Include implementation implications
+- Set review dates for revisiting decisions
 
 ## Cross-Referencing Rules
 
--   Always check existing documentation before adding new content
--   Link related decisions, tasks, and architecture changes
--   Update multiple files when changes affect multiple areas
--   Maintain consistency between memory, architecture, and task tracking
+- Always check existing documentation before adding new content
+- Link related decisions, tasks, and architecture changes
+- Update multiple files when changes affect multiple areas
+- Maintain consistency between memory, architecture, and task tracking
 
-after making changes, do test using cursor's Browser Automation feature at http://localhost:8000. assume that server already running
+## Key Pitfalls (Proven from Sister Projects)
 
-this application has been launched, any update or improvement or fix must consider application live condition
+1. **maatwebsite/excel is BLOCKED on PHP 8.5** — use PhpSpreadsheet directly + openspout behind an ExcelRenderer interface. Do not `composer require maatwebsite/excel`.
+2. **npm always needs `--legacy-peer-deps`** — Ant Design Pro packages have strict peer ranges that conflict with newer antd. This is NOT a one-time workaround — use it for every `npm install`/`npm ci`.
+3. **Read-only cross-DB access only** — never write to `arkfleet`, `daily_production`, or `sarang_erp` databases. Use dedicated read-only MySQL users.
+4. **Idempotent imports** — upsert on (period, site, account, source); track batches with status/error counts. Reuse the `SapSyncRun`/`SapPostingLog` pattern from arkfleet-next.
+5. **Shell quoting for cursor-agent** — when delegating, write prompts to a `.md` file and pass via `$(cat file.md)`. Never inline PHP/laravel code on the command line ($variables, parentheses, array brackets break bash).
+6. **Laravel 13 Session middleware** — `StartSession` always fires for web routes. If `SESSION_DRIVER=database`, ensure the sessions table exists before any web route is hit.
+
+## Source of Truth (read order)
+
+1. **User message and conversation** — current intent, constraints, corrections
+2. **`docs/concept.md`** — the authoritative product vision and architecture blueprint (62KB)
+3. **`MEMORY.md`** — durable project facts, gotchas, env quirks
+4. **`docs/architecture.md` + `docs/decisions.md`** — structure and design rationale
+5. **`docs/todo.md`** — active work, priorities, blockers
+6. **Code and config** — ground truth for behavior
 
 Remember: These documents should provide comprehensive context for future development and AI assistance, evolving as living documentation that stays current with your codebase.
