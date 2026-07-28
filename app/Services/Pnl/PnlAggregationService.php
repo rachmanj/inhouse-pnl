@@ -144,12 +144,14 @@ class PnlAggregationService
 
     public function baselineVsCurrent(PnlSnapshot $current, int $baselineYear): array
     {
-        $baselineSnapshot = PnlSnapshot::where('report_period_id', $current->report_period_id)
-            ->where('project_site_id', $current->project_site_id)
+        $baselineSnapshot = PnlSnapshot::where('project_site_id', $current->project_site_id)
+            ->whereHas('reportPeriod', fn ($q) => $q->where('year', $baselineYear))
+            ->with('lines')
             ->first();
 
         return [
             'current' => $current->lines,
+            'baseline' => $baselineSnapshot?->lines ?? collect(),
             'baseline_year' => $baselineYear,
         ];
     }

@@ -21,11 +21,7 @@ export default function Index({ batches = [] }) {
             title: 'Site',
             render: (_, record) => record.project_site?.code ?? record.site?.code ?? '—',
         },
-        {
-            title: 'Source',
-            dataIndex: 'source',
-            render: (v) => v?.replace(/_/g, ' '),
-        },
+        { title: 'Source', dataIndex: 'source' },
         {
             title: 'Status',
             dataIndex: 'status',
@@ -37,7 +33,7 @@ export default function Index({ batches = [] }) {
             render: (_, record) => (
                 <Typography.Text type="secondary">
                     {record.staged_rows ?? 0}/{record.total_rows ?? 0}
-                    {record.error_rows > 0 && (
+                    {(record.error_rows ?? 0) > 0 && (
                         <Typography.Text type="danger"> ({record.error_rows} err)</Typography.Text>
                     )}
                 </Typography.Text>

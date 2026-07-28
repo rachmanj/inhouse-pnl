@@ -7,12 +7,7 @@ import PreviewStep from '@/Components/Import/PreviewStep';
 import UploadStep from '@/Components/Import/UploadStep';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 
-const STEPS = [
-    { title: 'Upload', description: 'Select file & period' },
-    { title: 'Map', description: 'Confirm columns' },
-    { title: 'Preview', description: 'Review staging' },
-    { title: 'Confirm', description: 'Upsert balances' },
-];
+const STEPS = ['Upload', 'Map Columns', 'Preview', 'Confirm'];
 
 export default function Create({
     periods = [],
@@ -24,29 +19,32 @@ export default function Create({
     summary = {},
     mappingCounts = {},
 }) {
-    const [current, setCurrent] = useState(batch?.status === 'validated' ? 3 : batch ? 1 : 0);
+    const [current, setCurrent] = useState(batch ? 1 : 0);
     const [loading, setLoading] = useState(false);
 
-    const handleUpload = async (formData) => {
+    const goNext = () => setCurrent((c) => Math.min(c + 1, STEPS.length - 1));
+
+    const handleUpload = (formData) => {
         setLoading(true);
         router.post(route('imports.store'), formData, {
             forceFormData: true,
             onFinish: () => setLoading(false),
+            onSuccess: () => goNext(),
         });
     };
 
-    const handleMap = async (values) => {
+    const handleMapSubmit = (values) => {
         if (!batch?.id) {
+            goNext();
             return;
         }
         setLoading(true);
-        router.post(route('imports.resolve-mapping', batch.id), { column_map: values }, {
+        router.post(route('api.imports.preview', batch.id), values, {
+            preserveState: true,
             onFinish: () => setLoading(false),
-            onSuccess: () => setCurrent(2),
+            onSuccess: () => goNext(),
         });
     };
-
-    const handlePreviewContinue = () => setCurrent(3);
 
     const handleConfirm = () => {
         if (!batch?.id) {
@@ -61,7 +59,7 @@ export default function Create({
     return (
         <AuthenticatedLayout title="New Import">
             <Head title="New Import" />
-            <Steps current={current} items={STEPS} style={{ marginBottom: 32 }} />
+            <Steps current={current} items={STEPS.map((title) => ({ title }))} style={{ marginBottom: 24 }} />
 
             {current === 0 && (
                 <UploadStep
@@ -75,7 +73,7 @@ export default function Create({
                 <MapColumnsStep
                     columnMap={columnMap}
                     detectedColumns={detectedColumns}
-                    onSubmit={handleMap}
+                    onSubmit={handleMapSubmit}
                     loading={loading}
                 />
             )}
@@ -84,7 +82,7 @@ export default function Create({
                     summary={summary}
                     stagingRows={stagingRows}
                     mappingCounts={mappingCounts}
-                    onSubmit={handlePreviewContinue}
+                    onSubmit={() => goNext()}
                     loading={loading}
                 />
             )}

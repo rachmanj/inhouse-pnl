@@ -1,34 +1,85 @@
 import { Head, router } from '@inertiajs/react';
-import { ProTable } from '@ant-design/pro-components';
-import { Button, Descriptions, Tag } from 'antd';
+import { ProDescriptions } from '@ant-design/pro-components';
+import { Select, Space } from 'antd';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import StagingRowTable from '@/Components/Import/StagingRowTable';
+import StatusChip from '@/Components/Shared/StatusChip';
 
-export default function Show({ batch }) {
-    const columns = [
-        { title: '#', dataIndex: 'row_number', width: 60 },
-        { title: 'Account', dataIndex: 'raw_account_code' },
-        { title: 'Name', dataIndex: 'raw_account_name' },
-        { title: 'Debit', dataIndex: 'raw_debit' },
-        { title: 'Credit', dataIndex: 'raw_credit' },
-        { title: 'Balance', dataIndex: 'raw_balance' },
-        { title: 'Status', dataIndex: 'mapping_status', render: (s) => <Tag>{s}</Tag> },
-        { title: 'Mapped', render: (_, r) => r.mapped_account?.sap_code ?? '-' },
-    ];
+export default function Show({
+    batch,
+    stagingRows = [],
+    accounts = [],
+    filters = {},
+}) {
+    const handleAssignAccount = (rowId, accountId) => {
+        router.post(route('imports.resolve-mapping', batch.id), {
+            staging_row_id: rowId,
+            account_id: accountId,
+        }, { preserveScroll: true });
+    };
+
+    const handleStatusFilter = (status) => {
+        router.get(route('imports.show', batch.id), { mapping_status: status || undefined }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
 
     return (
-        <AuthenticatedLayout title={`Import #${batch.id}`}>
+        <AuthenticatedLayout title={`Import Batch #${batch.id}`}>
             <Head title={`Import #${batch.id}`} />
-            <Descriptions bordered size="small" style={{ marginBottom: 16 }}>
-                <Descriptions.Item label="Status">{batch.status}</Descriptions.Item>
-                <Descriptions.Item label="File">{batch.original_filename}</Descriptions.Item>
-                <Descriptions.Item label="Rows">{batch.mapped_rows}/{batch.total_rows}</Descriptions.Item>
-            </Descriptions>
-            {batch.status === 'validated' && (
-                <Button type="primary" style={{ marginBottom: 16 }} onClick={() => router.post(`/imports/${batch.id}/confirm`)}>
-                    Confirm Import
-                </Button>
-            )}
-            <ProTable rowKey="id" search={false} options={false} columns={columns} dataSource={batch.staging_rows} pagination={{ pageSize: 50 }} />
+
+            <ProDescriptions
+                column={3}
+                style={{ marginBottom: 16 }}
+                dataSource={batch}
+                columns={[
+                    {
+                        title: 'Period',
+                        render: () => {
+                            const p = batch.report_period ?? batch.period;
+                            return p ? `${p.year}-${String(p.month).padStart(2, '0')}` : '—';
+                        },
+                    },
+                    {
+                        title: 'Site',
+                        render: () => batch.project_site?.code ?? batch.site?.code ?? '—',
+                    },
+                    { title: 'Source', dataIndex: 'source' },
+                    {
+                        title: 'Status',
+                        dataIndex: 'status',
+                        render: (s) => <StatusChip status={s} />,
+                    },
+                    { title: 'File', dataIndex: 'original_filename' },
+                    { title: 'Staged Rows', dataIndex: 'staged_rows' },
+                    { title: 'Error Rows', dataIndex: 'error_rows' },
+                ]}
+            />
+
+            <StagingRowTable
+                rows={stagingRows}
+                accounts={accounts}
+                onAssignAccount={handleAssignAccount}
+                toolBarRender={() => [
+                    <Space key="filters">
+                        <span>Mapping status:</span>
+                        <Select
+                            allowClear
+                            placeholder="All"
+                            style={{ width: 140 }}
+                            value={filters.mapping_status}
+                            onChange={handleStatusFilter}
+                            options={[
+                                { value: 'unmapped', label: 'Unmapped' },
+                                { value: 'mapped', label: 'Mapped' },
+                                { value: 'ambiguous', label: 'Ambiguous' },
+                                { value: 'error', label: 'Error' },
+                            ]}
+                        />
+                    </Space>,
+                ]}
+            />
         </AuthenticatedLayout>
     );
 }

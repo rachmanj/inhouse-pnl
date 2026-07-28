@@ -1,20 +1,20 @@
-import { Head } from '@inertiajs/react';
-import { Table, Tag } from 'antd';
+import { Head, Link } from '@inertiajs/react';
+import { Button, Space } from 'antd';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { formatCurrency } from '@/Utils/currency';
+import DueDateRadar from '@/Components/Tax/DueDateRadar';
+import PeriodSelector from '@/Components/Shared/PeriodSelector';
 
-export default function Calendar({ filings }) {
-    const columns = [
-        { title: 'Type', dataIndex: 'tax_type' },
-        { title: 'Due Date', dataIndex: 'due_date' },
-        { title: 'Amount', dataIndex: 'amount_reported', render: (v) => formatCurrency(v) },
-        { title: 'Status', dataIndex: 'status', render: (s) => <Tag color={s === 'late' ? 'red' : 'default'}>{s}</Tag> },
-    ];
-
+export default function Calendar({ filings = [] }) {
     return (
         <AuthenticatedLayout title="Tax Calendar">
             <Head title="Tax Calendar" />
-            <Table rowKey="id" columns={columns} dataSource={filings} pagination={{ pageSize: 20 }} />
+            <Space style={{ marginBottom: 16 }}>
+                <PeriodSelector />
+                <Link href={route('tax.index')}>
+                    <Button>Back to Filings</Button>
+                </Link>
+            </Space>
+            <DueDateRadar filings={filings} />
         </AuthenticatedLayout>
     );
 }

@@ -1,5 +1,10 @@
 <?php
 
+use App\Http\Controllers\Reports\ApprovalStepController;
+use App\Http\Controllers\Reports\ReportPackageController;
+use App\Http\Controllers\Intelligence\InsightsController;
+use App\Http\Controllers\Admin\ReportPeriodController;
+use App\Enums\ReportPeriodStatus;
 use App\Http\Controllers\Admin\AccountController;
 use App\Http\Controllers\Admin\CoaMappingController;
 use App\Http\Controllers\Admin\ProjectSiteController;
@@ -21,7 +26,6 @@ Route::get('/', fn () => redirect()->route('login'));
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
     Route::get('/pnl/sites/{projectSite:code}', [SitePnlController::class, 'show'])->name('pnl.site.show');
     Route::get('/pnl/consolidated', [ConsolidatedPnlController::class, 'show'])->name('pnl.consolidated.show');
 
@@ -42,6 +46,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/tax/calendar', [TaxFilingController::class, 'calendar'])->name('tax.calendar');
     Route::get('/tax/{taxFiling}/payments', [TaxPaymentController::class, 'index'])->name('tax.payments.index');
     Route::post('/tax/{taxFiling}/payments', [TaxPaymentController::class, 'store'])->name('tax.payments.store');
+
+    Route::get('/reports', [ReportPackageController::class, 'index'])->name('reports.index');
+    Route::get('/reports/create', [ReportPackageController::class, 'create'])->name('reports.create');
+    Route::post('/reports', [ReportPackageController::class, 'store'])->name('reports.store');
+    Route::get('/reports/{reportPackage}', [ReportPackageController::class, 'show'])->name('reports.show');
+    Route::post('/reports/{reportPackage}/generate', [ReportPackageController::class, 'generate'])->name('reports.generate');
+    Route::post('/reports/{reportPackage}/deliver', [ReportPackageController::class, 'deliver'])->name('reports.deliver');
+    Route::post('/reports/{reportPackage}/approval-steps/{approvalStep}/approve', [ApprovalStepController::class, 'approve'])->name('reports.approval.approve');
+    Route::post('/reports/{reportPackage}/approval-steps/{approvalStep}/reject', [ApprovalStepController::class, 'reject'])->name('reports.approval.reject');
+
+    Route::get('/intelligence/insights', [InsightsController::class, 'index'])->name('intelligence.insights');
+
+    Route::get('/admin/report-periods', [ReportPeriodController::class, 'index'])->name('admin.periods.index');
+    Route::patch('/admin/report-periods/{reportPeriod}/status', [ReportPeriodController::class, 'transition'])->name('admin.periods.transition');
 
     Route::resource('admin/project-sites', ProjectSiteController::class)->names('admin.project-sites')->except(['show']);
     Route::resource('admin/accounts', AccountController::class)->names('admin.accounts')->except(['show']);

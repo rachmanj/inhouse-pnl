@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Tax;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Tax\StoreTaxPaymentRequest;
 use App\Models\TaxFiling;
-use App\Models\TaxPayment;
-use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class TaxPaymentController extends Controller
 {
@@ -15,23 +16,21 @@ class TaxPaymentController extends Controller
         $this->middleware('permission:tax.manage');
     }
 
-    public function index(TaxFiling $taxFiling)
+    public function index(TaxFiling $taxFiling): Response
     {
+        $taxFiling->load(['projectSite', 'reportPeriod']);
+
         return Inertia::render('Tax/Payments', [
             'filing' => $taxFiling,
-            'payments' => $taxFiling->payments()->latest('payment_date')->paginate(50),
+            'payments' => $taxFiling->payments()
+                ->orderByDesc('payment_date')
+                ->paginate(30),
         ]);
     }
 
-    public function store(Request $request, TaxFiling $taxFiling)
+    public function store(StoreTaxPaymentRequest $request, TaxFiling $taxFiling): RedirectResponse
     {
-        $validated = $request->validate([
-            'payment_date' => 'required|date',
-            'amount' => 'required|numeric|min:0',
-            'payment_reference' => 'nullable|string',
-        ]);
-
-        $taxFiling->payments()->create($validated);
+        $taxFiling->payments()->create($request->validated());
 
         return back()->with('success', 'Payment recorded.');
     }

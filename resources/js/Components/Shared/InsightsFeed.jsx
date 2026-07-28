@@ -1,4 +1,3 @@
-import { Link } from '@inertiajs/react';
 import { AlertOutlined } from '@ant-design/icons';
 import { ProCard } from '@ant-design/pro-components';
 import { Empty, List, Tag, Typography } from 'antd';
@@ -11,15 +10,7 @@ const SEVERITY_COLORS = {
 
 export default function InsightsFeed({ insights = [] }) {
     return (
-        <ProCard
-            title="Insights"
-            bordered
-            extra={
-                <Link href={route('intelligence.insights')}>
-                    View all
-                </Link>
-            }
-        >
+        <ProCard title="Insights" bordered>
             {insights.length === 0 ? (
                 <Empty
                     image={Empty.PRESENTED_IMAGE_SIMPLE}

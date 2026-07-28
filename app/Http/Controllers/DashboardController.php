@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\PnlLine;
 use App\Models\PnlSnapshot;
 use App\Models\ProjectSite;
 use App\Models\ReportPeriod;
@@ -82,7 +81,7 @@ class DashboardController extends Controller
     {
         $snapshots = PnlSnapshot::whereNull('project_site_id')
             ->whereHas('reportPeriod', fn ($q) => $q->where('year', $period->year))
-            ->with(['lines' => fn ($q) => $q->whereHas('pnlLine', fn ($lq) => $lq->where('code', 'PROFIT_LOSS'))])
+            ->with(['reportPeriod', 'lines' => fn ($q) => $q->whereHas('pnlLine', fn ($lq) => $lq->where('code', 'PROFIT_LOSS'))])
             ->get();
 
         return $snapshots->map(fn ($s) => [

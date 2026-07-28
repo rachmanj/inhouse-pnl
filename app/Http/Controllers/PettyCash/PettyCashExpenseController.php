@@ -25,9 +25,9 @@ class PettyCashExpenseController extends Controller
             'fund' => $pettyCashFund,
             'expenses' => $pettyCashFund->expenses()
                 ->with('importBatch')
-                ->when(request('category'), fn ($q, $cat) => $q->where('category', $cat))
-                ->when(request('from'), fn ($q, $from) => $q->where('expense_date', '>=', $from))
-                ->when(request('to'), fn ($q, $to) => $q->where('expense_date', '<=', $to))
+                ->when(request('category'), fn ($q) => $q->where('category', request('category')))
+                ->when(request('from'), fn ($q) => $q->where('expense_date', '>=', request('from')))
+                ->when(request('to'), fn ($q) => $q->where('expense_date', '<=', request('to')))
                 ->orderByDesc('expense_date')
                 ->paginate(30)
                 ->withQueryString(),

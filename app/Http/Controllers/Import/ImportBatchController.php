@@ -77,7 +77,7 @@ class ImportBatchController extends Controller
             'batch' => $importBatch,
             'stagingRows' => $importBatch->stagingRows()
                 ->with('mappedAccount')
-                ->when(request('mapping_status'), fn ($q, $status) => $q->where('mapping_status', $status))
+                ->when(request('mapping_status'), fn ($q) => $q->where('mapping_status', request('mapping_status')))
                 ->orderBy('row_number')
                 ->paginate(50)
                 ->withQueryString(),

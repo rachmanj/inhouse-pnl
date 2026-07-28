@@ -1,0 +1,24 @@
+{
+  "name": "ArkaLedger SAP Polling",
+  "nodes": [
+    {
+      "parameters": { "rule": { "interval": [{ "field": "hours", "hoursInterval": 24 }] } },
+      "name": "Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.ARKALEDGER_URL}}/api/n8n/sap-sync",
+        "authentication": "genericCredentialType"
+      },
+      "name": "Trigger SAP Sync",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [500, 300]
+    }
+  ],
+  "connections": {
+    "Schedule": { "main": [[{ "node": "Trigger SAP Sync", "type": "main", "index": 0 }]] }
+  }
+}

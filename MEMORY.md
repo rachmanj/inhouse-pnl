@@ -1,30 +1,39 @@
-**Purpose**: AI's persistent knowledge base for project context and learnings
-**Last Updated**: [Auto-updated by AI]
+# ArkaLedger Implementation Status
 
-## Memory Maintenance Guidelines
+## Completed Phases
 
-### Structure Standards
+### Phase 0: Foundation & Scaffold
+- Laravel 13 + Breeze React + Ant Design Pro (dark mode default)
+- Spatie roles/permissions with 4 roles + seed users
+- Core schema: project_sites, accounts, pnl_lines, coa_mappings, report_periods
+- Admin CRUD for sites, accounts, CoA mappings, users, roles
 
-- Entry Format: ### [ID] [Title (YYYY-MM-DD)] ✅ STATUS
-- Required Fields: Date, Challenge/Decision, Solution, Key Learning
-- Length Limit: 3-6 lines per entry (excluding sub-bullets)
-- Status Indicators: ✅ COMPLETE, ⚠️ PARTIAL, ❌ BLOCKED
+### Phase 1: Data Ingestion & P&L Dashboard MVP
+- Import pipeline (SapExcelParserService, staging, jobs)
+- account_balances + pnl_snapshots aggregation
+- Import Center, Site P&L, Consolidated P&L, Dashboard
+- Journal, Petty Cash, Tax modules (schema + CRUD)
 
-### Content Guidelines
+### Phase 2: Reports & Delivery
+- report_packages, report_artifacts, approval_steps, delivery_logs
+- Excel/PDF renderers, WorkbookGeneratorService (21-sheet map)
+- Report Studio UI, approval workflow, period state machine
 
-- Focus: Architecture decisions, critical bugs, security fixes, major technical challenges
-- Exclude: Routine features, minor bug fixes, documentation updates
-- Learning: Each entry must include actionable learning or decision rationale
-- Redundancy: Remove duplicate information, consolidate similar issues
+### Phase 3: Intelligence & Analytics
+- variance_flags, reconciliation_checks, ratio_snapshots, anomaly_alerts
+- Intelligence services + Insights feed
 
-### File Management
+### Phase 4: Deep Integration & Automation
+- sap_sync_runs, email_templates, sister-app repositories
+- Scheduled SAP pull, Hermes inbound, n8n workflow JSONs
+- Backfill commands scaffold
 
-- Archive Trigger: When file exceeds 500 lines or 6 months old
-- Archive Format: `memory-YYYY-MM.md` (e.g., `memory-2025-01.md`)
-- New File: Start fresh with current date and carry forward only active decisions
+## Login
+- admin@arkaledger.test / password (Super Admin)
+- finance@arkaledger.test / password (Finance Manager)
 
----
-
-## Project Memory Entries
-
-[Your memory entries go here, following the format above]
+## Gotchas
+- npm requires `--legacy-peer-deps` always
+- rc-field-form peer dep needed for Ant Design Pro
+- MySQL index names must be shortened for long composite indexes
+- SESSION_DRIVER=database (sessions table in users migration)

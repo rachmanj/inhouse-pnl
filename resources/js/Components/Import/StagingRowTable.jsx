@@ -56,20 +56,29 @@ export default function StagingRowTable({
         },
     ];
 
-    if (onAssignAccount) {
+    if (onAssignAccount && accounts.length) {
         columns.push({
-            title: 'Actions',
-            key: 'actions',
-            valueType: 'select',
-            fieldProps: {
-                options: accounts.map((a) => ({
-                    value: a.id,
-                    label: `${a.sap_code} — ${a.name}`,
-                })),
-                showSearch: true,
-                placeholder: 'Assign account',
-                onChange: (accountId, record) => onAssignAccount(record.id, accountId),
-            },
+            title: 'Assign',
+            key: 'assign',
+            width: 200,
+            render: (_, record) => (
+                <select
+                    defaultValue=""
+                    onChange={(e) => {
+                        if (e.target.value) {
+                            onAssignAccount(record.id, Number(e.target.value));
+                        }
+                    }}
+                    style={{ width: '100%' }}
+                >
+                    <option value="">Select account…</option>
+                    {accounts.map((a) => (
+                        <option key={a.id} value={a.id}>
+                            {a.sap_code} — {a.name}
+                        </option>
+                    ))}
+                </select>
+            ),
         });
     }
 
