@@ -8,10 +8,10 @@ import JournalLineTable from '@/Components/Journals/JournalLineTable';
 
 const emptyLine = () => ({ account_id: null, debit: 0, credit: 0, memo: '' });
 
-export default function Create({ periods = [], sites = [], accounts = [] }) {
+export default function Create({ periods = [], sites = [] }) {
     const [lines, setLines] = useState([emptyLine(), emptyLine()]);
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, transform } = useForm({
         report_period_id: null,
         project_site_id: null,
         reference_no: '',
@@ -19,11 +19,12 @@ export default function Create({ periods = [], sites = [], accounts = [] }) {
         lines: [],
     });
 
+    transform((formData) => ({ ...formData, lines }));
+
     const totalDebit = lines.reduce((s, l) => s + Number(l.debit || 0), 0);
     const totalCredit = lines.reduce((s, l) => s + Number(l.credit || 0), 0);
 
     const submit = () => {
-        setData('lines', lines);
         post(route('journals.store'));
     };
 

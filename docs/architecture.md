@@ -1,87 +1,70 @@
 Purpose: Technical reference for understanding system design and development patterns
-Last Updated: [Auto-updated by AI]
+Last Updated: 2026-07-28
 
-## Architecture Documentation Guidelines
-
-### Document Purpose
-
-This document describes the CURRENT WORKING STATE of the application architecture. It serves as:
-
-- Technical reference for understanding how the system currently works
-- Onboarding guide for new developers
-- Design pattern documentation for consistent development
-- Schema and data flow documentation reflecting actual implementation
-
-### What TO Include
-
-- **Current Technology Stack**: Technologies actually in use
-- **Working Components**: Components that are implemented and functional
-- **Actual Database Schema**: Tables, fields, and relationships as they exist
-- **Implemented Data Flows**: How data actually moves through the system
-- **Working API Endpoints**: Routes that are active and functional
-- **Deployment Patterns**: How the system is actually deployed
-- **Security Measures**: Security implementations that are active
-
-### What NOT to Include
-
-- **Issues or Bugs**: These belong in `MEMORY.md` with technical debt entries
-- **Limitations or Problems**: Document what IS working, not what isn't
-- **Future Plans**: Enhancement ideas belong in `backlog.md`
-- **Deprecated Features**: Remove outdated information rather than marking as deprecated
-- **Wishlist Items**: Planned features that aren't implemented yet
-
-### Update Guidelines
-
-- **Reflect Reality**: Always document the actual current state, not intended state
-- **Schema Notes**: When database schema has unused fields, note them factually
-- **Cross-Reference**: Link to other docs when appropriate, but don't duplicate content
-
-### For AI Coding Agents
-
-- **Investigate Before Updating**: Use codebase search to verify current implementation
-- **Move Issues to Memory**: If you discover problems, document them in `MEMORY.md`
-- **Factual Documentation**: Describe what exists, not what should exist
-
----
-
-# System Architecture
+# ArkaLedger System Architecture
 
 ## Project Overview
 
-[Brief description of what this system does]
+ArkaLedger (FinSight) is an automated multi-site P&L consolidation and financial reporting platform for PT. Arkananta. It replaces manual 21-sheet Excel workbook compilation with a Laravel + React dashboard.
 
 ## Technology Stack
 
-- **Frontend**: [Framework and key libraries]
-- **Backend**: [Framework, database, key services]
-- **Infrastructure**: [Deployment, monitoring, external services]
+- **Frontend**: Inertia.js + React + Ant Design Pro (dark mode default)
+- **Backend**: Laravel 13 + PHP 8.5, MySQL (`inhouse_pnl`), Redis/Horizon
+- **Excel**: PhpSpreadsheet (styled) + OpenSpout (streaming SPT sheet)
+- **PDF**: DomPDF via barryvdh/laravel-dompdf
+- **Auth**: Laravel Breeze + Spatie Permission (per-site scoping)
 
 ## Core Components
 
-[Describe your main system components]
+| Layer | Location | Responsibility |
+|-------|----------|----------------|
+| Controllers | `app/Http/Controllers/` | Thin orchestration, Inertia renders |
+| Services | `app/Services/` | Business logic (Import, Pnl, Reports, Intelligence, Sap, Hermes) |
+| Jobs | `app/Jobs/` | Horizon-queued async (imports, reports, SAP sync) |
+| Repositories | `app/Repositories/` | Read-only cross-app DB access |
+| Actions | `app/Actions/` | Single-purpose operations (approve, reject, resolve mapping) |
 
 ## Database Schema
 
-[Current tables and relationships]
-
-## API Design
-
-[Key endpoints and data flows]
+Single MySQL database `inhouse_pnl` with tables for:
+- Reference: `project_sites`, `accounts`, `pnl_lines`, `coa_mappings`, `report_periods`
+- Ledger: `account_balances`, `pnl_snapshots`, `pnl_snapshot_lines`
+- Import: `import_batches`, `sap_staging`, `import_column_maps`
+- Modules: `journals`, `journal_lines`, `petty_cash_funds`, `petty_cash_expenses`, `tax_filings`, `tax_payments`
+- Reports: `report_packages`, `report_artifacts`, `approval_steps`, `delivery_logs`
+- Intelligence: `variance_flags`, `reconciliation_checks`, `ratio_snapshots`, `anomaly_alerts`
+- Integration: `sap_sync_runs`, `email_templates`, `audit_logs`
 
 ## Data Flow
 
 ```mermaid
 graph TD
-    A[User Input] --> B[Validation]
-    B --> C[Processing]
-    C --> D[Database]
-    D --> E[Response]
+    A[SAP Excel Upload] --> B[SapExcelParserService]
+    B --> C[sap_staging]
+    C --> D[MapAndValidateImportBatchJob]
+    D --> E[account_balances]
+    E --> F[PnlAggregationService]
+    F --> G[pnl_snapshots]
+    G --> H[Dashboard / P&L UI]
+    G --> I[WorkbookGeneratorService]
+    I --> J[21-sheet Excel + PDF]
+```
 
-## Security Implementation
+## API Endpoints
 
-[Current security measures]
+- `POST /api/hermes/inbound` — email attachment webhook
+- `POST /api/n8n/sap-sync` — trigger SAP pull
+- `POST /api/n8n/report-packages/{id}/deliver` — report delivery
+- `GET /api/n8n/tax-filings/upcoming` — tax due-date radar
+- `GET /api/n8n/ratios/{period}` — ratio export
+
+## Cross-DB Connections
+
+Read-only connections configured in `config/database.php`: `arkfleet`, `daily_production`, `sarang_erp`, `sap` (Phase 4).
 
 ## Deployment
 
-[How the system is deployed]
-```
+- Dev: `php artisan serve` + `npm run dev`
+- Queue: `php artisan horizon`
+- Scheduler: `ScheduledSapPullJob` at 02:00 daily
