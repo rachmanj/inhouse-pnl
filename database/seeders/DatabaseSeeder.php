@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             PnlLineSeeder::class,
             CoaMappingSeeder::class,
+            ReportPeriodSeeder::class,
         ]);
     }
 }
