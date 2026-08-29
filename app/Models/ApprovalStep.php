@@ -26,4 +26,9 @@ class ApprovalStep extends Model
     {
         return $this->belongsTo(ProjectSite::class);
     }
+
+    public function actedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'acted_by');
+    }
 }

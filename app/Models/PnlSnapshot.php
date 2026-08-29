@@ -24,11 +24,6 @@ class PnlSnapshot extends Model
         return $this->belongsTo(ReportPeriod::class);
     }
 
-    public function reportPeriod(): BelongsTo
-    {
-        return $this->belongsTo(ReportPeriod::class);
-    }
-
     public function projectSite(): BelongsTo
     {
         return $this->belongsTo(ProjectSite::class);

@@ -4,21 +4,24 @@ namespace App\Jobs;
 
 use App\Models\ReportPeriod;
 use App\Services\Sap\SapAccountBalanceSyncService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Foundation\Queue\Queueable;
 
 class ScheduledSapPullJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Queueable;
 
     public function handle(SapAccountBalanceSyncService $sync): void
     {
-        $period = ReportPeriod::where('status', 'open')->orderByDesc('id')->first();
-        if ($period) {
-            $sync->pull($period);
+        $period = ReportPeriod::whereIn('status', ['open', 'in_review'])
+            ->orderByDesc('year')
+            ->orderByDesc('month')
+            ->first();
+
+        if (! $period) {
+            return;
         }
+
+        $sync->pull($period, 'scheduler');
     }
 }

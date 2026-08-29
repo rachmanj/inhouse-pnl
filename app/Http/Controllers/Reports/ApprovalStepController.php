@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Reports;
 
+use App\Actions\Reports\ApproveApprovalStepAction;
+use App\Actions\Reports\RejectApprovalStepAction;
 use App\Http\Controllers\Controller;
 use App\Models\ApprovalStep;
 use App\Models\ReportPackage;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class ApprovalStepController extends Controller
@@ -14,35 +17,25 @@ class ApprovalStepController extends Controller
         $this->middleware('permission:reports.approve');
     }
 
-    public function approve(ReportPackage $reportPackage, ApprovalStep $approvalStep)
+    public function approve(ReportPackage $reportPackage, ApprovalStep $approvalStep, ApproveApprovalStepAction $action): RedirectResponse
     {
-        $approvalStep->update([
-            'status' => 'approved',
-            'acted_by' => auth()->id(),
-            'acted_at' => now(),
-        ]);
+        abort_unless($approvalStep->report_package_id === $reportPackage->id, 404);
 
-        $pending = $reportPackage->approvalSteps()->where('status', 'pending')->count();
-        if ($pending === 0) {
-            $reportPackage->update(['status' => 'approved']);
-        }
+        $action->execute($approvalStep, request()->user());
 
-        return back()->with('success', 'Step approved.');
+        return back()->with('success', 'Approval step approved.');
     }
 
-    public function reject(Request $request, ReportPackage $reportPackage, ApprovalStep $approvalStep)
+    public function reject(Request $request, ReportPackage $reportPackage, ApprovalStep $approvalStep, RejectApprovalStepAction $action): RedirectResponse
     {
-        $request->validate(['comments' => 'required|string']);
+        abort_unless($approvalStep->report_package_id === $reportPackage->id, 404);
 
-        $approvalStep->update([
-            'status' => 'rejected',
-            'acted_by' => auth()->id(),
-            'acted_at' => now(),
-            'comments' => $request->comments,
+        $validated = $request->validate([
+            'comments' => ['required', 'string', 'min:3'],
         ]);
 
-        $reportPackage->update(['status' => 'draft']);
+        $action->execute($approvalStep, $request->user(), $validated['comments']);
 
-        return back()->with('success', 'Step rejected.');
+        return back()->with('success', 'Approval step rejected.');
     }
 }

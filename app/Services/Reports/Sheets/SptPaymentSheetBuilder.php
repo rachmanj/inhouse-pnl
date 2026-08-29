@@ -5,7 +5,6 @@ namespace App\Services\Reports\Sheets;
 use App\Models\ProjectSite;
 use App\Models\ReportPeriod;
 use App\Models\TaxFiling;
-use App\Models\TaxPayment;
 use App\Services\Reports\SheetDefinition;
 
 class SptPaymentSheetBuilder implements SheetBuilderInterface

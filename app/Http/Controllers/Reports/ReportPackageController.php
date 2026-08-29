@@ -9,24 +9,30 @@ use App\Models\ApprovalStep;
 use App\Models\ProjectSite;
 use App\Models\ReportPackage;
 use App\Models\ReportPeriod;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ReportPackageController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:reports.generate');
+        $this->middleware('permission:reports.generate')->except(['deliver']);
+        $this->middleware('permission:reports.deliver')->only(['deliver']);
     }
 
-    public function index()
+    public function index(): Response
     {
         return Inertia::render('Reports/Index', [
-            'packages' => ReportPackage::with('reportPeriod')->latest()->paginate(20),
+            'packages' => ReportPackage::with(['reportPeriod', 'createdBy'])
+                ->latest()
+                ->paginate(20),
         ]);
     }
 
-    public function create()
+    public function create(): Response
     {
         return Inertia::render('Reports/Builder', [
             'periods' => ReportPeriod::orderByDesc('year')->orderByDesc('month')->get(),
@@ -34,53 +40,78 @@ class ReportPackageController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'report_period_id' => 'required|exists:report_periods,id',
+            'report_period_id' => ['required', 'exists:report_periods,id'],
         ]);
 
-        $package = ReportPackage::create([
-            ...$validated,
-            'created_by' => auth()->id(),
-        ]);
+        $package = DB::transaction(function () use ($validated, $request) {
+            $package = ReportPackage::create([
+                'report_period_id' => $validated['report_period_id'],
+                'status' => 'draft',
+                'created_by' => $request->user()->id,
+            ]);
 
-        $sites = ProjectSite::where('is_active', true)->get();
-        foreach ($sites as $i => $site) {
+            $sites = ProjectSite::where('is_active', true)->orderBy('sort_order')->get();
+            $order = 1;
+
+            foreach ($sites as $site) {
+                ApprovalStep::create([
+                    'report_package_id' => $package->id,
+                    'project_site_id' => $site->id,
+                    'step_order' => $order++,
+                    'approver_role' => 'Site Accountant',
+                    'status' => 'pending',
+                ]);
+            }
+
             ApprovalStep::create([
                 'report_package_id' => $package->id,
-                'project_site_id' => $site->id,
-                'step_order' => $i + 1,
-                'approver_role' => 'Site Accountant',
+                'project_site_id' => null,
+                'step_order' => $order,
+                'approver_role' => 'Finance Manager',
+                'status' => 'pending',
             ]);
-        }
-        ApprovalStep::create([
-            'report_package_id' => $package->id,
-            'step_order' => $sites->count() + 1,
-            'approver_role' => 'Finance Manager',
-        ]);
+
+            return $package;
+        });
 
         return redirect()->route('reports.show', $package);
     }
 
-    public function show(ReportPackage $reportPackage)
+    public function show(ReportPackage $reportPackage): Response
     {
         return Inertia::render('Reports/Studio', [
-            'package' => $reportPackage->load(['reportPeriod', 'artifacts', 'approvalSteps.projectSite']),
+            'package' => $reportPackage->load([
+                'reportPeriod',
+                'artifacts',
+                'approvalSteps.projectSite',
+                'approvalSteps.actedBy',
+                'deliveryLogs',
+            ]),
         ]);
     }
 
-    public function generate(ReportPackage $reportPackage)
+    public function generate(ReportPackage $reportPackage): RedirectResponse
     {
         GenerateReportArtifactsJob::dispatch($reportPackage);
 
         return back()->with('success', 'Report generation queued.');
     }
 
-    public function deliver(Request $request, ReportPackage $reportPackage)
+    public function deliver(Request $request, ReportPackage $reportPackage): RedirectResponse
     {
-        $this->middleware('permission:reports.deliver');
-        DeliverReportPackageJob::dispatch($reportPackage, $request->input('recipients', []));
+        $validated = $request->validate([
+            'channel' => ['required', 'in:email,whatsapp,telegram'],
+            'recipient' => ['nullable', 'string'],
+        ]);
+
+        DeliverReportPackageJob::dispatch(
+            $reportPackage,
+            $validated['channel'],
+            $validated['recipient'] ?? null
+        );
 
         return back()->with('success', 'Delivery queued.');
     }

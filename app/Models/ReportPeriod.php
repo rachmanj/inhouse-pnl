@@ -12,6 +12,7 @@ class ReportPeriod extends Model
         'month',
         'status',
         'baseline_year',
+        'auto_deliver',
         'locked_at',
         'locked_by',
     ];
@@ -20,6 +21,7 @@ class ReportPeriod extends Model
     {
         return [
             'locked_at' => 'datetime',
+            'auto_deliver' => 'boolean',
         ];
     }
 

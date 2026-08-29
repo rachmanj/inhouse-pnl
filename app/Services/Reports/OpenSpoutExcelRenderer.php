@@ -62,10 +62,6 @@ class OpenSpoutExcelRenderer implements ExcelRendererInterface
         if ($definition->totalsRow !== null) {
             $this->writer->addRow(Row::fromValues($definition->totalsRow));
         }
-
-        if ($definition !== end($definition->dataRows)) {
-            $this->writer->addNewSheetAndMakeItCurrent();
-        }
     }
 
     public function save(string $path): string

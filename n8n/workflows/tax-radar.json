@@ -1,0 +1,55 @@
+{
+  "name": "ArkaLedger Tax Filing Radar",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 12 }]
+        }
+      },
+      "name": "Every 12 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{$env.ARKALEDGER_BASE_URL}}/api/n8n/tax-filings/upcoming?days=14",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "name": "Fetch Upcoming Filings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.HERMES_BASE_URL}}/api/send/whatsapp",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "to", "value": "={{$env.HERMES_WHATSAPP_RECIPIENT}}" },
+            { "name": "message", "value": "=Tax filing due: {{$json.filings[0].tax_type}} — {{$json.filings[0].due_date}}" }
+          ]
+        }
+      },
+      "name": "Notify via Hermes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Every 12 Hours": {
+      "main": [[{ "node": "Fetch Upcoming Filings", "type": "main", "index": 0 }]]
+    },
+    "Fetch Upcoming Filings": {
+      "main": [[{ "node": "Notify via Hermes", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "arkaledger" }]
+}
