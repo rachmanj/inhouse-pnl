@@ -13,7 +13,7 @@
         "laravel/horizon": "^5.48",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
-        "openspout/openspout": "^5.8",
+        "openspout/openspout": "^5.3",
         "phpoffice/phpspreadsheet": "^5.9",
         "spatie/laravel-permission": "^8.3",
         "tightenco/ziggy": "^2.0"
@@ -85,6 +85,9 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
+        "platform": {
+            "php": "8.3.30"
+        },
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
