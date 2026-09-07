@@ -1,9 +1,6 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { Button, Form, Input, Typography } from 'antd';
 
 export default function Register() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -13,9 +10,7 @@ export default function Register() {
         password_confirmation: '',
     });
 
-    const submit = (e) => {
-        e.preventDefault();
-
+    const submit = () => {
         post(route('register'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -25,96 +20,77 @@ export default function Register() {
         <GuestLayout>
             <Head title="Register" />
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
-
-                    <TextInput
+            <Form layout="vertical" onFinish={submit}>
+                <Form.Item
+                    label="Name"
+                    validateStatus={errors.name ? 'error' : ''}
+                    help={errors.name}
+                >
+                    <Input
                         id="name"
                         name="name"
                         value={data.name}
-                        className="mt-1 block w-full"
                         autoComplete="name"
-                        isFocused={true}
+                        autoFocus
                         onChange={(e) => setData('name', e.target.value)}
-                        required
                     />
+                </Form.Item>
 
-                    <InputError message={errors.name} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
+                <Form.Item
+                    label="Email"
+                    validateStatus={errors.email ? 'error' : ''}
+                    help={errors.email}
+                >
+                    <Input
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
-                        required
                     />
+                </Form.Item>
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
+                <Form.Item
+                    label="Password"
+                    validateStatus={errors.password ? 'error' : ''}
+                    help={errors.password}
+                >
+                    <Input.Password
                         id="password"
-                        type="password"
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
                         autoComplete="new-password"
                         onChange={(e) => setData('password', e.target.value)}
-                        required
                     />
+                </Form.Item>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
+                <Form.Item
+                    label="Confirm Password"
+                    validateStatus={errors.password_confirmation ? 'error' : ''}
+                    help={errors.password_confirmation}
+                >
+                    <Input.Password
                         id="password_confirmation"
-                        type="password"
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="mt-1 block w-full"
                         autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
-                        required
+                        onChange={(e) => setData('password_confirmation', e.target.value)}
                     />
+                </Form.Item>
 
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    <Link
-                        href={route('login')}
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Already registered?
-                    </Link>
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
+                <Form.Item>
+                    <Button type="primary" htmlType="submit" block loading={processing}>
                         Register
-                    </PrimaryButton>
+                    </Button>
+                </Form.Item>
+
+                <div style={{ textAlign: 'center' }}>
+                    <Link href={route('login')}>
+                        <Typography.Link>Already registered?</Typography.Link>
+                    </Link>
                 </div>
-            </form>
+            </Form>
         </GuestLayout>
     );
 }

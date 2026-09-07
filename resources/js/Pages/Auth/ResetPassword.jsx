@@ -1,9 +1,6 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
+import { Button, Form, Input } from 'antd';
 
 export default function ResetPassword({ token, email }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -13,9 +10,7 @@ export default function ResetPassword({ token, email }) {
         password_confirmation: '',
     });
 
-    const submit = (e) => {
-        e.preventDefault();
-
+    const submit = () => {
         post(route('password.store'), {
             onFinish: () => reset('password', 'password_confirmation'),
         });
@@ -25,70 +20,57 @@ export default function ResetPassword({ token, email }) {
         <GuestLayout>
             <Head title="Reset Password" />
 
-            <form onSubmit={submit}>
-                <div>
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
+            <Form layout="vertical" onFinish={submit}>
+                <Form.Item
+                    label="Email"
+                    validateStatus={errors.email ? 'error' : ''}
+                    help={errors.email}
+                >
+                    <Input
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
                         autoComplete="username"
                         onChange={(e) => setData('email', e.target.value)}
                     />
+                </Form.Item>
 
-                    <InputError message={errors.email} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
+                <Form.Item
+                    label="Password"
+                    validateStatus={errors.password ? 'error' : ''}
+                    help={errors.password}
+                >
+                    <Input.Password
                         id="password"
-                        type="password"
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
                         autoComplete="new-password"
-                        isFocused={true}
+                        autoFocus
                         onChange={(e) => setData('password', e.target.value)}
                     />
+                </Form.Item>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4">
-                    <InputLabel
-                        htmlFor="password_confirmation"
-                        value="Confirm Password"
-                    />
-
-                    <TextInput
-                        type="password"
+                <Form.Item
+                    label="Confirm Password"
+                    validateStatus={errors.password_confirmation ? 'error' : ''}
+                    help={errors.password_confirmation}
+                >
+                    <Input.Password
                         id="password_confirmation"
                         name="password_confirmation"
                         value={data.password_confirmation}
-                        className="mt-1 block w-full"
                         autoComplete="new-password"
-                        onChange={(e) =>
-                            setData('password_confirmation', e.target.value)
-                        }
+                        onChange={(e) => setData('password_confirmation', e.target.value)}
                     />
+                </Form.Item>
 
-                    <InputError
-                        message={errors.password_confirmation}
-                        className="mt-2"
-                    />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
+                <Form.Item>
+                    <Button type="primary" htmlType="submit" block loading={processing}>
                         Reset Password
-                    </PrimaryButton>
-                </div>
-            </form>
+                    </Button>
+                </Form.Item>
+            </Form>
         </GuestLayout>
     );
 }

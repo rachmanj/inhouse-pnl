@@ -1,18 +1,13 @@
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, useForm } from '@inertiajs/react';
+import { Button, Form, Input, Typography } from 'antd';
 
 export default function ConfirmPassword() {
     const { data, setData, post, processing, errors, reset } = useForm({
         password: '',
     });
 
-    const submit = (e) => {
-        e.preventDefault();
-
+    const submit = () => {
         post(route('password.confirm'), {
             onFinish: () => reset('password'),
         });
@@ -22,34 +17,32 @@ export default function ConfirmPassword() {
         <GuestLayout>
             <Head title="Confirm Password" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                This is a secure area of the application. Please confirm your
-                password before continuing.
-            </div>
+            <Typography.Paragraph type="secondary" style={{ marginBottom: 16 }}>
+                This is a secure area of the application. Please confirm your password before
+                continuing.
+            </Typography.Paragraph>
 
-            <form onSubmit={submit}>
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
+            <Form layout="vertical" onFinish={submit}>
+                <Form.Item
+                    label="Password"
+                    validateStatus={errors.password ? 'error' : ''}
+                    help={errors.password}
+                >
+                    <Input.Password
                         id="password"
-                        type="password"
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
-                        isFocused={true}
+                        autoFocus
                         onChange={(e) => setData('password', e.target.value)}
                     />
+                </Form.Item>
 
-                    <InputError message={errors.password} className="mt-2" />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end">
-                    <PrimaryButton className="ms-4" disabled={processing}>
+                <Form.Item>
+                    <Button type="primary" htmlType="submit" block loading={processing}>
                         Confirm
-                    </PrimaryButton>
-                </div>
-            </form>
+                    </Button>
+                </Form.Item>
+            </Form>
         </GuestLayout>
     );
 }
