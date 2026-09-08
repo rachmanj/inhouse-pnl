@@ -24,7 +24,7 @@ class TaxPaymentController extends Controller
             'filing' => $taxFiling,
             'payments' => $taxFiling->payments()
                 ->orderByDesc('payment_date')
-                ->paginate(30),
+                ->get(),
         ]);
     }
 

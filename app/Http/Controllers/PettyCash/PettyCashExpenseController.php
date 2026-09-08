@@ -29,8 +29,7 @@ class PettyCashExpenseController extends Controller
                 ->when(request('from'), fn ($q) => $q->where('expense_date', '>=', request('from')))
                 ->when(request('to'), fn ($q) => $q->where('expense_date', '<=', request('to')))
                 ->orderByDesc('expense_date')
-                ->paginate(30)
-                ->withQueryString(),
+                ->get(),
             'filters' => request()->only(['category', 'from', 'to']),
         ]);
     }

@@ -21,7 +21,7 @@ class ReportPeriodController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/ReportPeriods/Index', [
-            'periods' => ReportPeriod::orderByDesc('year')->orderByDesc('month')->paginate(24),
+            'periods' => ReportPeriod::orderByDesc('year')->orderByDesc('month')->get(),
         ]);
     }
 

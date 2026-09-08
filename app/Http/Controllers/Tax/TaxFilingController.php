@@ -25,8 +25,7 @@ class TaxFilingController extends Controller
             ->where('report_period_id', $period->id)
             ->when($taxType, fn ($q) => $q->where('tax_type', $taxType))
             ->orderBy('due_date')
-            ->paginate(30)
-            ->withQueryString();
+            ->get();
 
         return Inertia::render('Tax/Index', [
             'period' => $period,
@@ -40,8 +39,7 @@ class TaxFilingController extends Controller
         $filings = TaxFiling::with(['projectSite', 'reportPeriod'])
             ->when($request->query('status'), fn ($q) => $q->where('status', $request->query('status')))
             ->orderBy('due_date')
-            ->paginate(50)
-            ->withQueryString();
+            ->get();
 
         return Inertia::render('Tax/Calendar', [
             'filings' => $filings,

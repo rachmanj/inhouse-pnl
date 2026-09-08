@@ -7,7 +7,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import FilingStatusBadge from '@/Components/Tax/FilingStatusBadge';
 import { formatCurrency } from '@/Utils/currency';
 
-export default function Payments({ filing, payments = [], pagination = {} }) {
+export default function Payments({ filing, payments = [] }) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const { data, setData, post, processing, reset, errors } = useForm({
         payment_date: dayjs().format('YYYY-MM-DD'),
@@ -85,12 +85,8 @@ export default function Payments({ filing, payments = [], pagination = {} }) {
                 search={false}
                 options={false}
                 columns={columns}
-                dataSource={payments}
-                pagination={{
-                    current: pagination.current_page,
-                    pageSize: pagination.per_page,
-                    total: pagination.total,
-                }}
+                dataSource={Array.isArray(payments) ? payments : (payments?.data ?? [])}
+                pagination={{ pageSize: 20 }}
             />
 
             <Drawer title="Record Payment" open={drawerOpen} onClose={() => setDrawerOpen(false)} width={400}>

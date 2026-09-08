@@ -26,7 +26,7 @@ class JournalController extends Controller
         return Inertia::render('Journals/Index', [
             'journals' => Journal::with(['reportPeriod', 'projectSite', 'lines'])
                 ->latest()
-                ->paginate(20),
+                ->get(),
         ]);
     }
 

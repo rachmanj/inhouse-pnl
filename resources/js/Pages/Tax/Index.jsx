@@ -12,7 +12,9 @@ import dayjs from 'dayjs';
 export default function Index({ filings = [], taxType: initialTaxType = 'ppn' }) {
     const [taxType, setTaxType] = useState(initialTaxType);
 
-    const filtered = filings.filter((f) => f.tax_type === taxType);
+    // filings can arrive as a plain array (preferred) or a paginator {data: []}
+    const rows = Array.isArray(filings) ? filings : (filings?.data ?? []);
+    const filtered = taxType ? rows.filter((f) => f.tax_type === taxType) : rows;
 
     const columns = [
         {
