@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import { ProLayout } from '@ant-design/pro-layout';
 import { Button, ConfigProvider, Dropdown, message, theme } from 'antd';
+import enUS from 'antd/locale/en_US';
 import { useEffect } from 'react';
 import { useDarkMode } from '@/Hooks/useDarkMode';
 import { usePermission } from '@/Hooks/usePermission';
@@ -108,6 +109,7 @@ export default function AuthenticatedLayout({ children, title }) {
 
     return (
         <ConfigProvider
+            locale={enUS}
             theme={{
                 algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
             }}

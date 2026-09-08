@@ -3,6 +3,7 @@ import { useDarkMode } from '@/Hooks/useDarkMode';
 import { Link } from '@inertiajs/react';
 import { BulbFilled, BulbOutlined } from '@ant-design/icons';
 import { Button, Card, ConfigProvider, theme, Tooltip, Typography } from 'antd';
+import enUS from 'antd/locale/en_US';
 
 function AuthShell({ children, isDark, toggleTheme }) {
     const { token } = theme.useToken();
@@ -73,6 +74,7 @@ export default function GuestLayout({ children }) {
 
     return (
         <ConfigProvider
+            locale={enUS}
             theme={{
                 algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
             }}
