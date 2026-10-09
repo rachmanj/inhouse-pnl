@@ -42,7 +42,7 @@ A **web-based Financial Dashboard & Report Integration System** that:
 
 - **Ingests** account balances and transaction detail directly from SAP Business One (via a scheduled/semi-automated connector) instead of manual copy-paste.
 - **Absorbs** supporting reports (petty cash, cost breakdowns) either through email parsing (Hermes gateway) or intelligent file upload.
-- **Cross-references** operational data already captured in sister applications — `arkfleet-next` (equipment & depreciation), `daily-production` (fuel & production), `sarang-erp-laravel` (tax & procurement) — that live on the same VPS.
+- **Cross-references** operational data already captured in sister applications — `arkfleet-next` (equipment & depreciation) and `daily-production` (fuel & production) — that live on the same VPS. Tax filings and compliance history are maintained natively in ArkaLedger (manual entry + SAP).
 - **Consolidates** everything into a **live, multi-site P&L dashboard** with the same 2024-vs-current-year comparison structure the CPAs already trust.
 - **Regenerates** the exact 21-sheet Excel workbook on demand, produces professional PDF reports, and — after an approval workflow — **auto-delivers** the finished package to management on schedule.
 - **Adds intelligence** the manual process never had: variance analysis, anomaly detection, ratio analytics, trend charts, and SAP reconciliation.
@@ -117,7 +117,6 @@ flowchart TD
         SAP[(SAP Business One)]
         ARK[(arkfleet-next\nequipment + depreciation)]
         PROD[(daily-production\nfuel + production)]
-        ERP[(sarang-erp-laravel\ntax + procurement)]
         MAIL[Email / Hermes Gateway\npetty cash + schedules]
     end
 
@@ -141,7 +140,6 @@ flowchart TD
     SAP --> Connect
     ARK --> Connect
     PROD --> Connect
-    ERP --> Connect
     MAIL --> Connect
     Connect --> Stage --> Model --> Aggregate --> Intel
     Intel --> Dash
@@ -172,7 +170,7 @@ flowchart TD
 
 ## 3. Application Name Candidates
 
-The name should evoke **consolidation, clarity, and financial intelligence**, feel professional to a CPA audience, and sit naturally alongside the existing app family (`arkfleet`, `daily-production`, `sarang-erp`).
+The name should evoke **consolidation, clarity, and financial intelligence**, feel professional to a CPA audience, and sit naturally alongside the existing app family (`arkfleet`, `daily-production`).
 
 | # | Name | Rationale | Tagline |
 |---|------|-----------|---------|
@@ -235,7 +233,6 @@ flowchart TB
         FinDB[("arkaledger DB")]
         ArkDB[("arkfleet DB")]
         ProdDB[("daily_production DB")]
-        ErpDB[("sarang_erp DB")]
         RedisC[("Redis\ncache + queue")]
     end
 
@@ -258,7 +255,6 @@ flowchart TB
     Domain --> FinDB
     Ingest -. read-only .-> ArkDB
     Ingest -. read-only .-> ProdDB
-    Ingest -. read-only .-> ErpDB
     Domain --> RedisC
 
     Ingest <--> SAPB1
@@ -275,7 +271,7 @@ flowchart TB
 
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
-| **Backend framework** | Laravel 13 + PHP 8.5 | Matches Iwan's existing stack (`arkfleet-next`, `sarang-erp`); mature queue/scheduler/ORM. |
+| **Backend framework** | Laravel 13 + PHP 8.5 | Matches Iwan's existing stack (`arkfleet-next`); mature queue/scheduler/ORM. |
 | **Frontend** | Inertia.js + React + Ant Design Pro (ProTable) | Consistent with sister apps; ProTable is ideal for dense financial grids with the 2024-vs-current two-column pattern. |
 | **Database** | MySQL (shared server) | Same server as other apps → enables read-only cross-DB access without network hops. |
 | **Auth & AuthZ** | Laravel auth + Spatie Permission | Fine-grained per-site permissions (Site A accountant sees only Site A). |
@@ -322,7 +318,6 @@ flowchart TB
     subgraph Secondary["SECONDARY — Operational Enrichment (same VPS)"]
         ARK["arkfleet-next\nEquipment, DepreciationEntry,\nHM/KM readings, SapSyncRun"]
         PROD["daily-production\nProductionRecord, FuelRecord,\nEquipmentDeployment, MonthlyPlan"]
-        ERP["sarang-erp-laravel\nTaxReport, TaxTransaction,\nAssetDepreciation, SAP patterns"]
     end
 
     subgraph Tertiary["TERTIARY — Unstructured Inbound"]
@@ -332,7 +327,6 @@ flowchart TB
     SAP -->|balances| INT["ArkaLedger\nIngestion Layer"]
     ARK -->|equipment & depr context| INT
     PROD -->|fuel/production KPIs| INT
-    ERP -->|tax + SAP reference| INT
     EMAIL -->|parsed attachments| INT
 
     style Primary fill:#eaf2f8,stroke:#2471a3
@@ -347,7 +341,7 @@ Three viable mechanisms, in **recommended priority order**:
 | Option | Mechanism | Pros | Cons | Verdict |
 |--------|-----------|------|------|---------|
 | **A. Service Layer API** | SAP B1 Service Layer (OData/REST) over HTTPS | Real, supported, semantic access to JournalEntries, ChartOfAccounts, business objects | Requires Service Layer enabled + licensed; auth session management | **Preferred** if Service Layer is available |
-| **B. Direct DB query (HANA/SQL)** | Read-only query against SAP company DB (`OACT`, `JDT1`, `OJDT`, `PRC1` cost centers) | Fastest, no API limits, full historical depth | Bypasses SAP business logic; schema coupling; must be strictly read-only | **Strong fallback**, mirrors how `sarang-erp` and `arkfleet` already sync (`SapSyncRun`, `SapPostingLog`) |
+| **B. Direct DB query (HANA/SQL)** | Read-only query against SAP company DB (`OACT`, `JDT1`, `OJDT`, `PRC1` cost centers) | Fastest, no API limits, full historical depth | Bypasses SAP business logic; schema coupling; must be strictly read-only | **Strong fallback**, mirrors how `arkfleet` already syncs (`SapSyncRun`, `SapPostingLog`) |
 | **C. File-based import** | Scheduled SAP export → watched folder / upload → intelligent parser | Zero SAP-side integration effort; works even if IT restricts API/DB | Still semi-manual; parsing fragility | **Bridge/MVP option** — start here, graduate to A or B |
 
 **Recommendation — Semi-automated to fully-automated glide path:**
@@ -395,7 +389,7 @@ This mapping is the *only* place where the SAP structure and the report structur
 
 - **Equipment master & depreciation** → read from `arkfleet-next` (read-only connection). ArkaLedger stores only a *reference* (unit code + period) plus the derived amounts it needs, refreshed on import.
 - **Fuel & production KPIs** → read from `daily-production` for ratio analytics (fuel efficiency, stripping ratio), not for the P&L balances themselves (those come from SAP).
-- **Tax reference** → `sarang-erp-laravel` already models `TaxReport`/`TaxTransaction`; ArkaLedger can either consume these via a read-only view or re-implement the tax module natively (decision in §14). SAP remains the authoritative financial source.
+- **Tax filings & payments** → native ArkaLedger tables (`tax_filings`, `tax_payments`), populated via manual entry, historical import, and SAP-sourced amounts where applicable. SAP remains the authoritative financial source for balances reconciled against tax totals.
 
 **Rule of thumb:** *Financial truth = SAP. Operational context = sister apps. ArkaLedger owns only the consolidation, mapping, intelligence, and delivery layers.*
 
@@ -572,7 +566,7 @@ Each module below lists its **purpose**, **key features**, **UX pattern** (Ant D
 
 - **Purpose:** Reproduce MONTHLY TAX REPORT + SPT & PAYMENT sheets.
 - **Features:** PPN, PPh 23, PPh 21 (per location), PPh 4(2), PPh 25 tracking; filing status; payment history (handles the large multi-year SPT dataset).
-- **UX:** Tabbed by tax type; ProTable with filing/payment status, due-date and overdue indicators (reuse the `TaxReport` status model from `sarang-erp`).
+- **UX:** Tabbed by tax type; ProTable with filing/payment status, due-date and overdue indicators (pending / filed / late workflow).
 - **Innovation:** *Due-date radar* — upcoming filing deadlines with WhatsApp reminders; auto-reconcile PPN input/output totals against SAP.
 
 ### 7.6 Journal Entry Module
@@ -951,7 +945,7 @@ mindmap
 
 ## 12. Cross-App Integration Details
 
-All four systems share one MySQL server, enabling **read-only cross-database access** as the fast path, with **REST** reserved for logic-bearing calls.
+ArkaLedger and its co-located sister apps share one MySQL server, enabling **read-only cross-database access** to `arkfleet` and `daily_production` as the fast path, with **REST** reserved for logic-bearing calls where needed.
 
 ### 12.1 Integration Topology
 
@@ -962,23 +956,19 @@ flowchart TB
     subgraph RO["Read-only DB access"]
         ARK["arkfleet DB"]
         PROD["daily_production DB"]
-        ERP["sarang_erp DB"]
     end
 
     subgraph REST["REST (logic-bearing)"]
         ARKapi["arkfleet API"]
-        ERPapi["sarang-erp API"]
     end
 
     SAP["SAP B1"]
     HERMES["Hermes Gateway"]
 
-    AL <-->|balances| SAP
+    AL <-->|balances + tax amounts| SAP
     AL -.->|Equipment, DepreciationEntry,\nHM/KM readings| ARK
     AL -.->|ProductionRecord, FuelRecord,\nEquipmentDeployment, MonthlyPlan| PROD
-    AL -.->|TaxTransaction, TaxReport,\nAssetDepreciation| ERP
     AL -->|on-demand computed depr,\nposting patterns| ARKapi
-    AL -->|tax computation| ERPapi
     AL <-->|delivery + inbound parse| HERMES
 
     style RO fill:#e8f8f5,stroke:#16a085
@@ -1013,20 +1003,7 @@ flowchart TB
 
 **Design:** Used purely for the intelligence layer (fuel efficiency, stripping ratio, budget variance) — never as the source for financial balances. `ProjectSiteMapping` bridges production `site_id` to the SAP `project_code` so operational KPIs align with financial sites.
 
-### 12.4 sarang-erp-laravel Integration
-
-**Consumed for:** tax reference and SAP-integration patterns.
-
-| ArkaLedger Need | sarang-erp Source | Access |
-|-----------------|-------------------|--------|
-| Tax transactions/filings | `TaxReport`, `TaxTransaction`, `TaxPeriod` (report_type, report_data JSON, status workflow) | Read-only DB or REST |
-| Asset depreciation reference | `AssetDepreciationRun`, `AssetDepreciationEntry` | Read-only DB |
-| Tax compliance history | `TaxComplianceLog` | Read-only DB |
-| SAP posting reference | `BusinessPartner` sync, posting logs | Pattern reference |
-
-**Design decision (see §14):** The tax module can either **consume** `sarang-erp`'s tax data (avoiding duplication) or **re-implement** natively with SAP as source. Given `sarang-erp` already has a mature `TaxReport` model with the exact Indonesian tax types (spt_ppn, spt_pph_21/22/23/26, spt_pph_4_2), **consuming it via a read-only view or REST endpoint is preferred** for the MONTHLY TAX REPORT and SPT & PAYMENT sheets.
-
-### 12.5 Site Code Reconciliation
+### 12.4 Site Code Reconciliation
 
 A subtle but critical integration concern: each app identifies sites differently.
 
@@ -1075,7 +1052,7 @@ gantt
 
     section Phase 4 — Deepen Integration
     Scheduled SAP DB/Service Layer pull       :p4a, after p2c, 4w
-    Cross-app enrichment (arkfleet/prod/erp)  :p4b, after p3c, 4w
+    Cross-app enrichment (arkfleet/prod)      :p4b, after p3c, 4w
     Email/Hermes inbound parsing              :p4c, after p4b, 3w
     Historical back-fill                      :p4d, after p4b, 3w
 ```
@@ -1086,7 +1063,7 @@ gantt
 - **Phase 1 — Ingest & P&L (MVP):** File-based SAP import with intelligent parser, CoA mapping, normalized `account_balances`, P&L aggregation, and the live site + consolidated dashboards. **This alone eliminates manual assembly** — the core ROI.
 - **Phase 2 — Reports & Automation:** Faithful 21-sheet Excel regeneration, PDF, approval workflow, and scheduled delivery via Hermes. Replaces the manual email deliverable end-to-end.
 - **Phase 3 — Intelligence:** Variance analysis, SAP reconciliation gate, ratio & trend analytics, anomaly detection, and notifications — the *inovasi* layer.
-- **Phase 4 — Deepen Integration:** Move from upload to scheduled SAP pulls, wire in cross-app enrichment (depreciation from arkfleet, ratios from daily-production, tax from sarang-erp), email inbound parsing, and historical back-fill.
+- **Phase 4 — Deepen Integration:** Move from upload to scheduled SAP pulls, wire in cross-app enrichment (depreciation from arkfleet, ratios from daily-production), email inbound parsing, and historical back-fill.
 
 ### 13.2 MVP Definition
 
@@ -1114,7 +1091,7 @@ Items requiring Iwan's / stakeholder input, each with a recommended default so w
 ### 14.1 Key Assumptions
 
 - SAP B1 site codes map cleanly to the nine canonical `project_sites`; a crosswalk handles discrepancies.
-- Read-only DB credentials to the three sister databases can be provisioned on the shared server.
+- Read-only DB credentials to the two sister databases (`arkfleet`, `daily_production`) can be provisioned on the shared server.
 - The Hermes gateway can both **send** (email/WA/Telegram) and **receive** (inbound inbox for parsing).
 - The 2024 baseline is the agreed comparison year; the "current year" advances with the fiscal calendar.
 - Depreciation is authoritative in `arkfleet-next` for equipment; SAP holds the posted financial balances.
@@ -1167,7 +1144,7 @@ flowchart LR
 
 ### 15.5 Cross-Database Access in Laravel
 
-- Define separate read-only DB connections (`arkfleet`, `daily_production`, `sarang_erp`) in `config/database.php`.
+- Define separate read-only DB connections (`arkfleet`, `daily_production`) in `config/database.php`.
 - Use dedicated read-only MySQL users (SELECT-only) — ArkaLedger must never write to sister databases.
 - Wrap cross-app reads in thin repository classes so a future switch from shared-DB to REST is a one-file change.
 

@@ -30,10 +30,10 @@
 
 ## 0. How This Plan Is Organized
 
-- Journal Entry, Petty Cash, and Tax (Sections 6–8) are **cross-cutting modules**. Their schema/CRUD/UI land in **Phase 1–2** (they're needed for the 21-sheet Excel deliverable), while their *automation* (arkfleet depreciation pull, Hermes email ingest, sarang-erp reconciliation) lands in **Phase 4**. Section 13's Gantt chart shows the exact slot for every step.
+- Journal Entry, Petty Cash, and Tax (Sections 6–8) are **cross-cutting modules**. Their schema/CRUD/UI land in **Phase 1–2** (they're needed for the 21-sheet Excel deliverable), while their *automation* (arkfleet depreciation pull, Hermes email ingest, SAP tax reconciliation) lands in **Phase 4**. Section 13's Gantt chart shows the exact slot for every step.
 - Every migration below is written as the literal `Schema::create` closure body to paste into the generated migration file. Column order matters for readability, not correctness.
 - All money columns are `decimal(18,2)` (Rupiah, no fractional sen in practice, but 2dp kept for SAP fidelity).
-- All tables live in the single `inhouse_pnl` MySQL database on the `mysql` (default) Laravel connection. Sister-app tables are **never migrated here** — they are queried through dedicated read-only connections (`arkfleet`, `daily_production`, `sarang_erp`), configured in [Section 11.5](#115-cross-database-connections).
+- All tables live in the single `inhouse_pnl` MySQL database on the `mysql` (default) Laravel connection. Sister-app tables are **never migrated here** — they are queried through dedicated read-only connections (`arkfleet`, `daily_production`), configured in [Section 11.5](#115-cross-database-connections).
 
 ---
 
@@ -85,14 +85,9 @@ DAILY_PRODUCTION_DB_HOST=127.0.0.1
 DAILY_PRODUCTION_DB_DATABASE=daily_production
 DAILY_PRODUCTION_DB_USERNAME=daily_production_readonly
 DAILY_PRODUCTION_DB_PASSWORD=
-
-SARANG_ERP_DB_HOST=127.0.0.1
-SARANG_ERP_DB_DATABASE=sarang_erp
-SARANG_ERP_DB_USERNAME=sarang_erp_readonly
-SARANG_ERP_DB_PASSWORD=
 ```
 
-Create the `inhouse_pnl` database and the four MySQL users (`inhouse_pnl_app` full rights on `inhouse_pnl` only; the three `*_readonly` users granted `SELECT`-only on their respective sister databases) before running migrations.
+Create the `inhouse_pnl` database and the three MySQL users (`inhouse_pnl_app` full rights on `inhouse_pnl` only; the two `*_readonly` users granted `SELECT`-only on their respective sister databases) before running migrations.
 
 ```bash
 php artisan migrate:install
@@ -1050,7 +1045,6 @@ Schema::create('sap_sync_runs', function (Blueprint $table) {
 
 ```bash
 php artisan make:class Repositories/ArkfleetRepository
-php artisan make:class Repositories/SarangErpRepository
 ```
 
 (`DailyProductionRepository` already created in Step 3.3.)
@@ -1059,7 +1053,6 @@ php artisan make:class Repositories/SarangErpRepository
 |---|---|---|
 | `ArkfleetRepository` | `DepreciationEntry`, `Equipment`, `EquipmentHmKmReading`, `Project` | `DepreciationJournalBuilderService` (Section 6) |
 | `DailyProductionRepository` | `FuelRecord`, `ProductionRecord`, `EquipmentDeployment`, `MonthlyPlan`, `PlanTarget`, `Site`/`ProjectSiteMapping` | `RatioAnalyticsService`, `AnomalyDetectionService`, `VarianceAnalysisService` (budget axis) |
-| `SarangErpRepository` | `TaxReport`, `TaxTransaction`, `TaxPeriod`, `AssetDepreciationRun` | `TaxReconciliationService` (Section 8) |
 
 Each repository is a thin read-only query wrapper (no Eloquent models writing to sister DBs — plain `DB::connection('arkfleet')->table(...)` queries or minimal read-only Eloquent models with `protected $connection` and no `save()`/`create()` usage anywhere in ArkaLedger code, enforced by code review + the security-review skill).
 
@@ -1228,7 +1221,7 @@ Inertia pages: `resources/js/Pages/PettyCash/Index.jsx` (fund `ProCard`s per sit
 
 ## 8. Tax Module
 
-*(Schema/CRUD ships in Phase 1–2; sarang-erp reconciliation ships in Phase 4 Step 4.2/4.4.)*
+*(Schema/CRUD ships in Phase 1–2; SAP-backed tax reconciliation ships in Phase 4 Step 4.2/4.4.)*
 
 ```bash
 php artisan make:model TaxFiling -m
@@ -1251,8 +1244,7 @@ Schema::create('tax_filings', function (Blueprint $table) {
     $table->timestamp('filed_at')->nullable();
     $table->enum('status', ['pending', 'filed', 'late'])->default('pending');
     $table->decimal('amount_reported', 18, 2)->default(0);
-    $table->enum('source', ['manual', 'sarang_erp', 'sap'])->default('manual');
-    $table->unsignedBigInteger('sarang_erp_ref_id')->nullable(); // foreign id in the sister DB, not an FK (cross-DB)
+    $table->enum('source', ['manual', 'sap'])->default('manual');
     $table->timestamps();
 
     $table->index(['report_period_id', 'tax_type']);
@@ -1277,7 +1269,7 @@ Schema::create('tax_payments', function (Blueprint $table) {
 });
 ```
 
-`TaxReconciliationService::reconcile(ReportPeriod $period): Collection` — compares `tax_filings.amount_reported` against `SarangErpRepository::taxTransactionsFor($period)` totals (per concept §12.4 decision: **consume sarang-erp's tax data** rather than duplicate it), writing discrepancies into the same `reconciliation_checks` table from Step 3.2 (a generic `checkable_type`/`checkable_id` polymorphic pair added to that table in this step, or a lightweight sibling `tax_reconciliation_checks` table — prefer extending `reconciliation_checks` polymorphically to keep one reconciliation concept across SAP and tax).
+`TaxReconciliationService::reconcile(ReportPeriod $period): Collection` — compares `tax_filings.amount_reported` against SAP-sourced tax totals (and manual adjustments) for the same period, writing discrepancies into the same `reconciliation_checks` table from Step 3.2 (a generic `checkable_type`/`checkable_id` polymorphic pair added to that table in this step, or a lightweight sibling `tax_reconciliation_checks` table — prefer extending `reconciliation_checks` polymorphically to keep one reconciliation concept across SAP balances and tax).
 
 Inertia pages: `resources/js/Pages/Tax/Index.jsx` (`Tabs` per tax type: PPN, PPh 21/23/25/4(2)), `Tax/Calendar.jsx` (due-date radar — `Calendar`/timeline component colored by `status`, overdue rows highlighted red), `Tax/Payments.jsx` (ProTable with **server-side pagination** — required given the 65K-row dataset, backed by the indexes above).
 
@@ -1480,7 +1472,7 @@ app/
 ├── Jobs/              # queued Horizon jobs
 ├── Models/
 ├── Policies/
-├── Repositories/      # read-only cross-app repositories (ArkfleetRepository, DailyProductionRepository, SarangErpRepository)
+├── Repositories/      # read-only cross-app repositories (ArkfleetRepository, DailyProductionRepository)
 └── Services/
     ├── Import/
     ├── Pnl/
@@ -1537,13 +1529,6 @@ Every mutating endpoint has a dedicated `FormRequest` (never inline `$request->v
         'username' => env('DAILY_PRODUCTION_DB_USERNAME'),
         'password' => env('DAILY_PRODUCTION_DB_PASSWORD'),
     ],
-    'sarang_erp' => [
-        'driver' => 'mysql',
-        'host' => env('SARANG_ERP_DB_HOST'),
-        'database' => env('SARANG_ERP_DB_DATABASE'),
-        'username' => env('SARANG_ERP_DB_USERNAME'),
-        'password' => env('SARANG_ERP_DB_PASSWORD'),
-    ],
     'sap' => [ // Phase 4 only
         'driver' => 'sqlsrv', // or 'mysql'/'hana' per actual SAP B1 DB engine confirmed with Iwan
         'host' => env('SAP_DB_HOST'),
@@ -1554,7 +1539,7 @@ Every mutating endpoint has a dedicated `FormRequest` (never inline `$request->v
 ],
 ```
 
-**Non-negotiable rule:** no migration ever targets `arkfleet`, `daily_production`, `sarang_erp`, or `sap` connections. Every repository method against these connections is `SELECT` only — enforced by (a) database-level `SELECT`-only grants, and (b) never calling `->create()`/`->update()`/`->delete()` against these connections anywhere in the codebase (checked in code review / security-review skill runs).
+**Non-negotiable rule:** no migration ever targets `arkfleet`, `daily_production`, or `sap` connections. Every repository method against these connections is `SELECT` only — enforced by (a) database-level `SELECT`-only grants, and (b) never calling `->create()`/`->update()`/`->delete()` against these connections anywhere in the codebase (checked in code review / security-review skill runs).
 
 ### 11.6 Idempotent Import Pattern
 
@@ -1811,7 +1796,6 @@ erDiagram
         enum status
         decimal amount_reported
         enum source
-        bigint sarang_erp_ref_id "cross-DB ref, not FK"
     }
     TAX_PAYMENT {
         bigint id PK

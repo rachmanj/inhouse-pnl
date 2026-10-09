@@ -92,20 +92,6 @@ return [
             'strict' => true,
         ],
 
-        'sarang_erp' => [
-            'driver' => 'mysql',
-            'host' => env('SARANG_ERP_DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('SARANG_ERP_DB_DATABASE', 'sarang_erp'),
-            'username' => env('SARANG_ERP_DB_USERNAME', 'sarang_erp_readonly'),
-            'password' => env('SARANG_ERP_DB_PASSWORD', ''),
-            'charset' => 'utf8mb4',
-            'collation' => 'utf8mb4_unicode_ci',
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'strict' => true,
-        ],
-
         'sap' => [
             'driver' => env('SAP_DB_DRIVER', 'sqlsrv'),
             'host' => env('SAP_DB_HOST', '127.0.0.1'),

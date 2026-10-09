@@ -61,7 +61,7 @@ graph TD
 
 ## Cross-DB Connections
 
-Read-only connections configured in `config/database.php`: `arkfleet`, `daily_production`, `sarang_erp`, `sap` (Phase 4).
+Read-only connections configured in `config/database.php`: `arkfleet`, `daily_production`, `sap` (Phase 4).
 
 ## Deployment
 

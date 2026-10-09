@@ -21,7 +21,6 @@ class TaxFiling extends Model
         'status',
         'amount_reported',
         'source',
-        'sarang_erp_ref_id',
     ];
 
     protected function casts(): array

@@ -30,15 +30,14 @@ YOUR ROLES:
 
 ## Cross-App Ecosystem (same VPS, shared MySQL server)
 
-This app shares a server with three operational systems. **Never duplicate master data — reference it via read-only DB connections.**
+This app shares a server with two operational systems. **Never duplicate master data — reference it via read-only DB connections.**
 
 | Sister App | Database | Consumed For |
 |-----------|----------|-------------|
 | `arkfleet-next` | `arkfleet DB` | Equipment master, DepreciationEntry, HM/KM readings, Project.site mapping |
 | `daily-production` | `daily_production DB` | ProductionRecord, FuelRecord, EquipmentDeployment, MonthlyPlan/PlanTarget |
-| `sarang-erp-laravel` | `sarang_erp DB` | TaxReport, TaxTransaction, SAP B1 integration patterns |
 
-**Rule:** ArkaLedger stores only its own derived data (account_balances, P&L snapshots, journals, tax filings, report artifacts). Equipment, production, and tax reference data is consumed read-only from sister DBs.
+**Rule:** ArkaLedger stores only its own derived data (account_balances, P&L snapshots, journals, tax filings, report artifacts). Equipment and production reference data is consumed read-only from sister DBs; tax filings are native to ArkaLedger (manual entry + SAP).
 
 **Site Code Canonical Table:** ArkaLedger maintains the authoritative `project_sites` table (017C, 021C, 022C, 023C, 025C, 026C, APS, HO, JKT) and crosswalk mappings to each sister app's identifiers.
 
@@ -93,7 +92,7 @@ n8n may be used for:
 
 - **ALWAYS use MySQL MCP** for database queries instead of Laravel Tinker commands
 - MCP provides direct, safe, read-only access to the `inhouse_pnl` database
-- Sister databases (`arkfleet`, `daily_production`, `sarang_erp`) are available read-only — never write to them
+- Sister databases (`arkfleet`, `daily_production`) are available read-only — never write to them
 - Query the database directly using natural language requests
 
 ### Database Query Guidelines
@@ -154,7 +153,7 @@ n8n may be used for:
 
 1. **maatwebsite/excel is BLOCKED on PHP 8.5** — use PhpSpreadsheet directly + openspout behind an ExcelRenderer interface. Do not `composer require maatwebsite/excel`.
 2. **npm always needs `--legacy-peer-deps`** — Ant Design Pro packages have strict peer ranges that conflict with newer antd. This is NOT a one-time workaround — use it for every `npm install`/`npm ci`.
-3. **Read-only cross-DB access only** — never write to `arkfleet`, `daily_production`, or `sarang_erp` databases. Use dedicated read-only MySQL users.
+3. **Read-only cross-DB access only** — never write to `arkfleet` or `daily_production` databases. Use dedicated read-only MySQL users.
 4. **Idempotent imports** — upsert on (period, site, account, source); track batches with status/error counts. Reuse the `SapSyncRun`/`SapPostingLog` pattern from arkfleet-next.
 5. **Shell quoting for cursor-agent** — when delegating, write prompts to a `.md` file and pass via `$(cat file.md)`. Never inline PHP/laravel code on the command line ($variables, parentheses, array brackets break bash).
 6. **Laravel 13 Session middleware** — `StartSession` always fires for web routes. If `SESSION_DRIVER=database`, ensure the sessions table exists before any web route is hit.
