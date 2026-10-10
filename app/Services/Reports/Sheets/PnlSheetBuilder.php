@@ -33,4 +33,23 @@ class PnlSheetBuilder extends AbstractPnlSheetBuilder
             dataRows: $rows,
         );
     }
+
+    public function buildHoJkt(ReportPeriod $period, ProjectSite $ho, ProjectSite $jkt): SheetDefinition
+    {
+        $lines = PnlLine::where(function ($q) {
+            $q->where('is_subtotal', true)
+                ->orWhereIn('code', ['REVENUE_ENGINEERING', 'PROFIT_LOSS']);
+        })
+            ->orderBy('sort_order')
+            ->get();
+
+        $name = 'P&L HO & JKT';
+
+        return new SheetDefinition(
+            name: $name,
+            headerRows: [[$name.' — '.$period->year]],
+            columnGroups: $this->pnlColumnGroups($period),
+            dataRows: $this->buildTwoSiteStackedRows($period, $ho, $jkt, $lines),
+        );
+    }
 }

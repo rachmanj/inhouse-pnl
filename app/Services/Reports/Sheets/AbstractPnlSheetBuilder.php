@@ -102,4 +102,37 @@ abstract class AbstractPnlSheetBuilder implements SheetBuilderInterface
     {
         return $site ? "{$prefix} {$site->code}" : $prefix;
     }
+
+    /**
+     * @param  iterable<int, PnlLine>  $lines
+     */
+    protected function buildTwoSiteStackedRows(
+        ReportPeriod $period,
+        ProjectSite $ho,
+        ProjectSite $jkt,
+        iterable $lines,
+    ): array {
+        $rows = [];
+
+        foreach ($lines as $line) {
+            $rows[] = $this->buildPnlRow(
+                $line,
+                $this->baselineSnapshotFor($period, $ho),
+                $this->snapshotFor($period, $ho),
+            );
+        }
+
+        $rows[] = [''];
+        $rows[] = ['JKT'];
+
+        foreach ($lines as $line) {
+            $rows[] = $this->buildPnlRow(
+                $line,
+                $this->baselineSnapshotFor($period, $jkt),
+                $this->snapshotFor($period, $jkt),
+            );
+        }
+
+        return $rows;
+    }
 }

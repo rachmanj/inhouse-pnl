@@ -31,4 +31,21 @@ class RincianSheetBuilder extends AbstractPnlSheetBuilder
             dataRows: $rows,
         );
     }
+
+    public function buildHoJkt(ReportPeriod $period, ProjectSite $ho, ProjectSite $jkt): SheetDefinition
+    {
+        $lines = PnlLine::where('is_subtotal', false)
+            ->whereDoesntHave('children')
+            ->orderBy('sort_order')
+            ->get();
+
+        $name = 'Rincian HO & JKT';
+
+        return new SheetDefinition(
+            name: $name,
+            headerRows: [[$name.' — '.$period->year]],
+            columnGroups: $this->pnlColumnGroups($period),
+            dataRows: $this->buildTwoSiteStackedRows($period, $ho, $jkt, $lines),
+        );
+    }
 }

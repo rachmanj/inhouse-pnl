@@ -12,10 +12,11 @@ use App\Services\Reports\Sheets\PnlSheetBuilder;
 use App\Services\Reports\Sheets\RincianSheetBuilder;
 use App\Services\Reports\Sheets\SptPaymentSheetBuilder;
 use App\Services\Reports\Sheets\SummaryPnlSheetBuilder;
-use Illuminate\Support\Facades\Storage;
 
 class WorkbookGeneratorService
 {
+    private const SITE_ORDER = ['017C', '021C', '022C', '023C', '025C', '026C', 'APS'];
+
     public function __construct(
         private PhpSpreadsheetExcelRenderer $styledRenderer,
         private OpenSpoutExcelRenderer $streamingRenderer,
@@ -78,43 +79,39 @@ class WorkbookGeneratorService
         $definitions[] = $this->sptPaymentSheetBuilder->build($period);
         $definitions[] = $this->monthlyTaxReportSheetBuilder->build($period);
 
-        foreach (['017C', '021C', '022C', '025C', '026C'] as $code) {
+        foreach (self::SITE_ORDER as $code) {
             if ($site = $sites->get($code)) {
                 $definitions[] = $this->rincianSheetBuilder->build($period, $site);
             }
         }
 
-        foreach (['017C', '021C', '022C', '025C'] as $code) {
+        if ($ho = $sites->get('HO')) {
+            if ($jkt = $sites->get('JKT')) {
+                $definitions[] = $this->rincianSheetBuilder->buildHoJkt($period, $ho, $jkt);
+            } else {
+                $definitions[] = $this->rincianSheetBuilder->build($period, $ho);
+            }
+        } elseif ($jkt = $sites->get('JKT')) {
+            $definitions[] = $this->rincianSheetBuilder->build($period, $jkt);
+        }
+
+        foreach (self::SITE_ORDER as $code) {
             if ($site = $sites->get($code)) {
                 $definitions[] = $this->pnlSheetBuilder->build($period, $site);
             }
         }
 
-        if ($aps = $sites->get('APS')) {
-            $definitions[] = $this->rincianSheetBuilder->build($period, $aps);
-            $definitions[] = $this->pnlSheetBuilder->build($period, $aps);
-        }
-
         if ($ho = $sites->get('HO')) {
-            $definitions[] = $this->rincianSheetBuilder->build($period, $ho);
-            $definitions[] = $this->pnlSheetBuilder->build($period, $ho);
-        }
-        if ($jkt = $sites->get('JKT')) {
-            $definitions[] = $this->rincianSheetBuilder->build($period, $jkt);
+            if ($jkt = $sites->get('JKT')) {
+                $definitions[] = $this->pnlSheetBuilder->buildHoJkt($period, $ho, $jkt);
+            } else {
+                $definitions[] = $this->pnlSheetBuilder->build($period, $ho);
+            }
+        } elseif ($jkt = $sites->get('JKT')) {
             $definitions[] = $this->pnlSheetBuilder->build($period, $jkt);
         }
 
         $definitions[] = $this->summaryPnlSheetBuilder->build($period);
-
-        if ($site026 = $sites->get('026C')) {
-            $definitions[] = $this->rincianSheetBuilder->build($period, $site026);
-            $definitions[] = $this->pnlSheetBuilder->build($period, $site026);
-        }
-
-        if ($site023 = $sites->get('023C')) {
-            $definitions[] = $this->rincianSheetBuilder->build($period, $site023);
-            $definitions[] = $this->pnlSheetBuilder->build($period, $site023);
-        }
 
         return $definitions;
     }
@@ -145,6 +142,12 @@ class WorkbookGeneratorService
             }
 
             @unlink($tempPath);
+        }
+
+        $sptSheet = $spreadsheet->getSheetByName('SPT & PAYMENT');
+        if ($sptSheet !== null) {
+            $spreadsheet->removeSheetByIndex($spreadsheet->getIndex($sptSheet));
+            $spreadsheet->addSheet($sptSheet, 2);
         }
 
         $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);

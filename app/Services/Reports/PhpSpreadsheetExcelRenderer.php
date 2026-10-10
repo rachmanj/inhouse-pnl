@@ -2,6 +2,7 @@
 
 namespace App\Services\Reports;
 
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -44,7 +45,10 @@ class PhpSpreadsheetExcelRenderer implements ExcelRendererInterface
                 $sheet->setCellValue([$col, $row], $group['title'] ?? '');
                 $columns = $group['columns'] ?? [];
                 if (count($columns) > 1) {
-                    $sheet->mergeCellsByColumnAndRow($startCol, $row, $startCol + count($columns) - 1, $row);
+                    $endCol = $startCol + count($columns) - 1;
+                    $mergeRange = Coordinate::stringFromColumnIndex($startCol).$row
+                        .':'.Coordinate::stringFromColumnIndex($endCol).$row;
+                    $sheet->mergeCells($mergeRange);
                 }
                 $col += max(count($columns), 1);
             }
