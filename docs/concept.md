@@ -772,17 +772,19 @@ Reproduce the **exact 21-sheet Excel deliverable** currently emailed to manageme
 
 | # | Sheet | Data Source in ArkaLedger |
 |---|-------|---------------------------|
-| 1 | JOURNAL ENTRY | `journal_entries` (enriched from arkfleet depreciation) |
+| 1 | JOURNAL ENTRY | `journals` + `journal_lines` (enriched from arkfleet depreciation) |
 | 2 | PETTY CASH SUMMARY | `petty_cash_funds` + `petty_cash_expenses` |
-| 3 | SPT & PAYMENT | `tax_filings` + `tax_payments` |
+| 3 | SPT & PAYMENT | `tax_filings` + `tax_payments` (streaming engine) |
 | 4 | MONTHLY TAX REPORT | tax module aggregation |
-| 5–9 | Rincian 017C/021C/022C/025C | `pnl_snapshot_lines` (detail view) |
-| 10–13 | P&L 017C/021C/022C/025C | `pnl_snapshots` (summary view) |
-| 14–15 | Rincian / P&L APS in CHO | APS site snapshot |
-| 16–17 | Rincian / P&L HO & JKT | admin-site snapshots |
-| 18 | SUMMARY P&L | consolidated aggregation |
-| 19–20 | Rincian / P&L 026C | new-site snapshot |
-| 21–22 | Rincian / P&L 023C | site snapshot |
+| 5–12 | Rincian 017C, 021C, 022C, 023C, 025C, 026C, APS, HO & JKT | `pnl_snapshot_lines` (leaf-line detail) |
+| 13–20 | P&L 017C, 021C, 022C, 023C, 025C, 026C, APS, HO & JKT | `pnl_snapshots` (subtotal view) |
+| 21 | SUMMARY P&L | consolidated `pnl_snapshot` |
+
+**Canonical sheet list — 21 sheets = 4 fixed + 16 per-site + 1 consolidated.** Sheet *order* is part of the deliverable: all Rincian sheets first (5–12), then all P&L sheets (13–20), with `SUMMARY P&L` last. `SPT & PAYMENT` is the only streaming-engine sheet and must sit at position 3.
+
+**HO and JKT share one sheet each** — `Rincian HO & JKT` and `P&L HO & JKT` hold both sites as two stacked blocks (HO block, blank spacer row, `JKT` label row, JKT block) under one shared year-column header. That is what keeps the per-site block at 8 sheets instead of 9, and it is the reason the workbook totals 21 rather than 23.
+
+**This list is the source of truth.** `WorkbookGeneratorService::buildSheetDefinitions()` implements it; any change to one must be made in the other.
 
 A **workbook template engine** maps each snapshot to a sheet layout (styles, merged headers, the 2024/current column groups, computed TOTAL/AVG/% columns), driven by PhpSpreadsheet (see §15 for the PHP 8.5 constraint).
 

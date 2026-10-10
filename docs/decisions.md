@@ -55,3 +55,27 @@ Decision: No sarang-erp integration — ArkaLedger is standalone - 2026-10-09
 **Implementation**: Removed `config/database.php` `sarang_erp` connection, `SarangErpRepository`, env vars, `tax_filings.sarang_erp_ref_id` and `source = sarang_erp`; updated docs and `.cursorrules` to reflect two sister-app integrations only.
 
 **Review Date**: 2027-10-09 (revisit only if sarang-erp is migrated to the shared MySQL server or a formal API contract is approved)
+
+---
+
+Decision: HO and JKT share one sheet each — 21-sheet workbook - 2026-10-10
+
+**Context**: The concept/plan called the deliverable a "21-sheet workbook", but the sheet map in concept §10.2 did not add up to 21: its numbering ran to 22, and the implementation produced 23 unique sheets (with `Rincian 026C` defined twice by mistake on top of that). The only way to reach 21 was to decide how the two admin sites are represented.
+
+**Options Considered**:
+
+1. **HO and JKT combined into one sheet each**
+   - ✅ Pros: Matches plan §2.2's arithmetic (4 fixed + 16 per-site + 1 consolidated = 21); matches the concept row that names "Rincian / P&L HO & JKT" as a single entry.
+   - ❌ Cons: Those two sheets hold two stacked data blocks instead of one, so they differ in shape from the other 18 per-site sheets.
+
+2. **HO and JKT as separate sheets**
+   - ✅ Pros: Every per-site sheet has an identical shape.
+   - ❌ Cons: Totals 23 sheets; the "21-sheet" naming used throughout the concept, plan, and Phase 2 exit criteria would have to be rewritten.
+
+**Decision**: Option 1 — `Rincian HO & JKT` and `P&L HO & JKT`, each containing the HO block, a blank spacer row, a `JKT` label row, and the JKT block under one shared year-column header. Workbook totals 21 sheets in a fixed order: 4 fixed sheets, then all 8 Rincian sheets, then all 8 P&L sheets, then `SUMMARY P&L`.
+
+**Rationale**: 21 is the number the whole concept is built on and the Phase 2 acceptance criterion is checked against, so the sheet map has to reconcile to it rather than the other way round.
+
+**Implementation**: `WorkbookGeneratorService::SITE_ORDER` + `buildHoJkt()` on `RincianSheetBuilder`/`PnlSheetBuilder`; duplicate `Rincian 026C` removed; `SPT & PAYMENT` repositioned to sheet 3 after the streaming merge. concept §10.2 and plan §2.2 rewritten as the single canonical sheet list.
+
+**Review Date**: when the generated workbook is compared sheet-by-sheet against the legacy manual workbook — if the original deliverable actually keeps HO and JKT on separate sheets, this decision flips to 23 and the docs follow.

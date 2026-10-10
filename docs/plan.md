@@ -716,7 +716,7 @@ php artisan make:class Services/Reports/Sheets/PnlSheetBuilder
 php artisan make:class Services/Reports/Sheets/SummaryPnlSheetBuilder
 ```
 
-Each `*SheetBuilder` implements `app/Services/Reports/Sheets/SheetBuilderInterface { build(ReportPeriod $period, ?ProjectSite $site = null): SheetDefinition }`. `RincianSheetBuilder` and `PnlSheetBuilder` are **parameterized by site** and invoked once per site (017C, 021C, 022C, 023C, 025C, 026C, APS, HO&JKT) to produce the 16 per-site Rincian/P&L sheets; `SummaryPnlSheetBuilder` produces the 1 consolidated sheet.
+Each `*SheetBuilder` implements `app/Services/Reports/Sheets/SheetBuilderInterface { build(ReportPeriod $period, ?ProjectSite $site = null): SheetDefinition }`. `RincianSheetBuilder` and `PnlSheetBuilder` are **parameterized by site** and invoked once per site in the `WorkbookGeneratorService::SITE_ORDER` order (017C, 021C, 022C, 023C, 025C, 026C, APS), with **HO and JKT combined** into one sheet each via `buildHoJkt(ReportPeriod $period, ProjectSite $ho, ProjectSite $jkt)`. That produces the 16 per-site Rincian/P&L sheets; `SummaryPnlSheetBuilder` produces the 1 consolidated sheet.
 
 `WorkbookGeneratorService::generate(ReportPackage $package): ReportArtifact` orchestrates the full 21-sheet map from concept §10.2:
 
@@ -726,13 +726,11 @@ Each `*SheetBuilder` implements `app/Services/Reports/Sheets/SheetBuilderInterfa
 | 2 | PETTY CASH SUMMARY | `PettyCashSummarySheetBuilder` | `petty_cash_funds` + `petty_cash_expenses` (Section 7) |
 | 3 | SPT & PAYMENT | `SptPaymentSheetBuilder` (openspout, streaming) | `tax_filings` + `tax_payments` (Section 8) |
 | 4 | MONTHLY TAX REPORT | `MonthlyTaxReportSheetBuilder` | tax module aggregation |
-| 5–9 | Rincian 017C/021C/022C/025C/026C | `RincianSheetBuilder` × site | `pnl_snapshot_lines` (leaf detail) |
-| 10–13 | P&L 017C/021C/022C/025C | `PnlSheetBuilder` × site | `pnl_snapshot_lines` (subtotal view) |
-| 14–15 | Rincian / P&L APS | `RincianSheetBuilder`/`PnlSheetBuilder` (site=APS) | site snapshot |
-| 16–17 | Rincian / P&L HO & JKT | same builders (site=HO, site=JKT, rendered side-by-side per concept sheet naming) | site snapshot |
-| 18 | SUMMARY P&L | `SummaryPnlSheetBuilder` | consolidated `pnl_snapshot` |
-| 19–20 | Rincian / P&L 026C | `RincianSheetBuilder`/`PnlSheetBuilder` (site=026C) | site snapshot |
-| 21 | Rincian / P&L 023C | `RincianSheetBuilder`/`PnlSheetBuilder` (site=023C) | site snapshot |
+| 5–12 | Rincian 017C, 021C, 022C, 023C, 025C, 026C, APS, HO & JKT | `RincianSheetBuilder` × site (`buildHoJkt()` for the combined sheet) | `pnl_snapshot_lines` (leaf detail) |
+| 13–20 | P&L 017C, 021C, 022C, 023C, 025C, 026C, APS, HO & JKT | `PnlSheetBuilder` × site (`buildHoJkt()`) | `pnl_snapshot_lines` (subtotal view) |
+| 21 | SUMMARY P&L | `SummaryPnlSheetBuilder` | consolidated `pnl_snapshot` |
+
+Sheet order is part of the deliverable and is enforced in code: all Rincian sheets first, then all P&L sheets, `SUMMARY P&L` last. `SPT & PAYMENT` is the only streaming-engine sheet; because `mergeStreamingSheets()` appends it after the styled sheets, it is repositioned to index 2 (sheet 3) afterwards. HO and JKT share one sheet each — two stacked blocks (HO block, blank spacer row, `JKT` label row, JKT block) under one shared year-column header — which is what makes the per-site block 8 sheets instead of 9 and the workbook 21 sheets instead of 23.
 
 Merged headers, the two year-column groups, and computed TOTAL/AVG/% columns are handled generically inside `PhpSpreadsheetExcelRenderer::addSheet()` from the `SheetDefinition::$columnGroups` structure, so individual builders only need to supply raw row data — the layout logic is written once.
 
